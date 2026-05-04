@@ -1,5 +1,7 @@
 # PowerSync Write API Demo
 
+![Architecture diagram](./diagram.png)
+
 ## Project Layout
 
 ```
