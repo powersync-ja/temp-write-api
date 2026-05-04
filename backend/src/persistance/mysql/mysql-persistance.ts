@@ -1,0 +1,120 @@
+import mysql from 'mysql2/promise';
+import type { Persister, CrudEntry } from '../../types.js';
+import { RetryableError, FatalOperationError } from '../../errors.js';
+import type { RowDataPacket } from 'mysql2/promise';
+import type { EntryMapper } from '../../mapping/types.js';
+import { defaultMapper } from '../../mapping/default.js';
+
+function escapeIdentifier(identifier: string): string {
+  return `\`${identifier.replace(/`/g, '``').replace(/\./g, '`.`')}\``;
+}
+
+export const createMySQLPersister = (uri: string, mapper: EntryMapper = defaultMapper): Persister => {
+  console.debug('Using MySQL Persister');
+
+  const pool = mysql.createPool(uri);
+
+  const persister: Persister = {
+    async createCheckpoint(user_id: string, client_id: string) {
+      const connection = await pool.getConnection();
+      try {
+        await connection.beginTransaction();
+        await connection.query(
+          `
+      INSERT INTO checkpoints
+         (user_id, client_id, checkpoint)
+      VALUES (?, ?, 1)
+      ON DUPLICATE KEY UPDATE
+        checkpoint = checkpoint + 1;
+      `,
+          [user_id, client_id]
+        );
+        const [rows] = await connection.query<RowDataPacket[]>(
+          `
+           SELECT checkpoint FROM checkpoints WHERE user_id = ? AND client_id = ?;
+           `,
+          [user_id, client_id]
+        );
+
+        await connection.commit();
+        const checkpoint: bigint = rows[0].checkpoint;
+        return checkpoint;
+      } catch (ex) {
+        await connection.rollback();
+        throw ex;
+      } finally {
+        connection.release();
+      }
+    },
+    updateBatch: async (batch: CrudEntry[]) => {
+      const connection = await pool.getConnection();
+      try {
+        await connection.beginTransaction();
+
+        for (const op of batch) {
+          const mapped = mapper(op);
+          if (mapped === null) continue;
+
+          const table = escapeIdentifier(mapped.table);
+
+          if (mapped.op === 'PUT') {
+            const with_id = { ...mapped.data, id: mapped.id };
+
+            const columnsEscaped = Object.keys(with_id).map(escapeIdentifier);
+            const columnsJoined = columnsEscaped.join(', ');
+
+            const updateClauses: string[] = [];
+
+            for (const key of Object.keys(mapped.data)) {
+              if (key === 'id') continue;
+              updateClauses.push(`${escapeIdentifier(key)} = VALUES(${escapeIdentifier(key)})`);
+            }
+
+            const updateClause = updateClauses.length > 0 ? `ON DUPLICATE KEY UPDATE ${updateClauses.join(', ')}` : ``;
+
+            const statement = `
+              INSERT INTO ${table} (${columnsJoined})
+              VALUES (${Object.keys(with_id)
+                .map(() => '?')
+                .join(', ')})
+              ${updateClause}`;
+
+            await connection.execute(statement, Object.values(with_id));
+          } else if (mapped.op === 'PATCH') {
+            const updateClauses: string[] = [];
+
+            for (const key of Object.keys(mapped.data)) {
+              if (key === 'id') continue;
+              updateClauses.push(`${escapeIdentifier(key)} = ?`);
+            }
+
+            const statement = `
+              UPDATE ${table}
+              SET ${updateClauses.join(', ')}
+              WHERE id = ?`;
+
+            const values = [...Object.values(mapped.data), mapped.id];
+            await connection.execute(statement, values);
+          } else if (mapped.op === 'DELETE') {
+            const statement = `DELETE FROM ${table} WHERE id = ?`;
+            await connection.execute(statement, [mapped.id]);
+          }
+        }
+        await connection.commit();
+      } catch (e) {
+        await connection.rollback();
+        const err = e as Error & { errno?: number };
+        const errno = err.errno ?? 0;
+        if (errno === 1062) {
+          throw new FatalOperationError('UNIQUE_VIOLATION', err.message);
+        } else if (errno === 1452) {
+          throw new FatalOperationError('FOREIGN_KEY_VIOLATION', err.message);
+        }
+        throw new RetryableError(err.message);
+      } finally {
+        connection.release();
+      }
+    }
+  };
+  return persister;
+};

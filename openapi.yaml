@@ -1,0 +1,236 @@
+openapi: 3.0.3
+info:
+  title: PowerSync Backend API
+  description: Contract between the demo app connector and the backend.
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:6060
+    description: Local development
+
+paths:
+  /api/auth/token:
+    get:
+      operationId: getAuthToken
+      summary: Get a JWT access token
+      parameters:
+        - name: user_id
+          in: query
+          required: false
+          schema:
+            type: string
+            default: "UserID "
+          description: Subject of the JWT. A random UUID is typically passed by the client.
+      responses:
+        "200":
+          description: JWT token and PowerSync URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TokenResponse"
+
+  /api/auth/keys:
+    get:
+      operationId: getAuthKeys
+      summary: JWKS endpoint for PowerSync JWT validation
+      responses:
+        "200":
+          description: JSON Web Key Set
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/JwksResponse"
+
+  /api/data:
+    post:
+      operationId: postCrudTransaction
+      summary: Apply a transaction of CRUD operations
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CrudTransaction"
+      responses:
+        "200":
+          description: >
+            Transaction result. Always returns 200 — the outcome 
+            is determined by the status field in the response body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionResponse"
+
+  /api/data/checkpoint:
+    put:
+      operationId: putCheckpoint
+      summary: Get a custom write checkpoint
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CheckpointRequest"
+      responses:
+        "200":
+          description: Checkpoint value
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CheckpointResponse"
+        "400":
+          description: Invalid body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+components:
+  schemas:
+    TokenResponse:
+      type: object
+      required:
+        - token
+        - powersync_url
+      properties:
+        token:
+          type: string
+          description: Signed JWT access token
+        powersync_url:
+          type: string
+          description: PowerSync service URL
+
+    CrudTransaction:
+      type: object
+      required:
+        - crud
+      properties:
+        crud:
+          type: array
+          items:
+            $ref: "#/components/schemas/CrudEntry"
+        transaction_id:
+          type: integer
+          format: int64
+          description: Groups changes from the same transaction; null if no explicit transaction
+
+    CrudEntry:
+      type: object
+      required:
+        - client_id
+        - id
+        - op
+        - table
+      properties:
+        client_id:
+          type: integer
+          format: int64
+          description: Auto-incrementing client-side id
+        id:
+          type: string
+          description: ID of the changed row
+        op:
+          type: string
+          enum:
+            - PUT
+            - PATCH
+            - DELETE
+          description: Type of change
+        table:
+          type: string
+          description: Table that contained the change
+        transaction_id:
+          type: integer
+          format: int64
+          description: Auto-incrementing transaction id
+        op_data:
+          type: object
+          additionalProperties: true
+          description: Data associated with the change
+        previous_values:
+          type: object
+          additionalProperties: true
+          description: Previous values for UPDATE/DELETE (when trackPreviousValues is enabled)
+        metadata:
+          type: string
+          description: Client-side metadata (when trackMetadata is enabled)
+
+    TransactionResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          enum: [success, retryable_error, fatal_error]
+          description: >
+            success: entire transaction persisted, safe to complete.
+            retryable_error: transient failure, transaction rolled back,
+              client should retry.
+            fatal_error: transaction rolled back due to a non-recoverable
+              issue — see failed_operation for details.
+        retry_after_ms:
+          type: integer
+          description: >
+            Suggested retry delay in ms. Only meaningful for
+            retryable_error.
+        failed_operation:
+          description: >
+            Present when status is fatal_error. Identifies what
+            caused the rollback.
+          allOf:
+            - $ref: "#/components/schemas/FailedOperation"
+        message:
+          type: string
+          description: Human-readable summary for logging/debugging.
+
+    FailedOperation:
+      type: object
+      required: [error_code]
+      properties:
+        error_code:
+          type: string
+          description: >
+            Machine-readable classification, e.g. CONFLICT,
+            SCHEMA_MISMATCH, VALIDATION_ERROR, UNIQUE_VIOLATION,
+            FOREIGN_KEY_VIOLATION.
+        message:
+          type: string
+          description: Human-readable error detail.
+
+    CheckpointRequest:
+      type: object
+      required:
+        - user_id
+        - client_id
+      properties:
+        user_id:
+          type: string
+        client_id:
+          type: string
+
+    CheckpointResponse:
+      type: object
+      required:
+        - checkpoint
+      properties:
+        checkpoint:
+          type: string
+
+    JwksResponse:
+      type: object
+      required:
+        - keys
+      properties:
+        keys:
+          type: array
+          items:
+            type: object
+            additionalProperties: true
+
+    MessageResponse:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
