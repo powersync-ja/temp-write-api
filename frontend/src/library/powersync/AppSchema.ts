@@ -13,14 +13,17 @@ const todos = new Table(
     completed_by: column.text,
     completed: column.integer
   },
-  { indexes: { list: ['list_id'] } }
+  { indexes: { list: ['list_id'] }, trackMetadata: true }
 );
 
-const lists = new Table({
-  created_at: column.text,
-  name: column.text,
-  owner_id: column.text
-});
+const lists = new Table(
+  {
+    created_at: column.text,
+    name: column.text,
+    owner_id: column.text
+  },
+  { trackMetadata: true }
+);
 
 export const AppSchema = new Schema({
   todos,

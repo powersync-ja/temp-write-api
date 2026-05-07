@@ -3,6 +3,7 @@ import { v4 as uuid } from 'uuid';
 import { AbstractPowerSyncDatabase, PowerSyncBackendConnector } from '@powersync/web';
 import { WriteAPIClient } from './WriteAPIClient';
 import { createOpenAPIClient, type OpenAPIClient } from './OpenAPITransport';
+import { parseMutatorEnvelope } from '../mutators/runtime';
 
 export type DemoConfig = {
   backendUrl: string;
@@ -64,7 +65,11 @@ export class DemoConnector implements PowerSyncBackendConnector {
 
     this._clientId = await database.getClientId();
     const writeClient = await this.getWriteClient(database);
-    const result = await writeClient.processTransaction(transaction);
+
+    const envelope = parseMutatorEnvelope(transaction.crud[0]?.metadata);
+    const result = envelope
+      ? await writeClient.processMutatorInvocation(envelope, transaction.transactionId ?? undefined)
+      : await writeClient.processTransaction(transaction);
 
     switch (result.status) {
       case 'success':

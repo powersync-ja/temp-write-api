@@ -55,6 +55,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/mutators/invoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Invoke a server-side mutator by name */
+        post: operations["invokeMutator"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/data/checkpoint": {
         parameters: {
             query?: never;
@@ -81,6 +98,23 @@ export interface components {
             token: string;
             /** @description PowerSync service URL */
             powersync_url: string;
+        };
+        MutatorInvokeRequest: {
+            /** @description Registered mutator name */
+            name: string;
+            /** @description Mutator arguments. Validated server-side via the mutator's own zod schema. */
+            args: {
+                [key: string]: unknown;
+            };
+            /** @description Client-generated id for this invocation */
+            call_id: string;
+            /**
+             * Format: int64
+             * @description ps_crud transaction_id this invocation came from, for logging/idempotency.
+             */
+            transaction_id?: number;
+            /** @description Acting user id. Trusted from the body for v1 — replace with JWT-extracted id once auth is wired. */
+            user_id?: string;
         };
         CrudTransaction: {
             crud: components["schemas"]["CrudEntry"][];
@@ -224,6 +258,30 @@ export interface operations {
         };
         responses: {
             /** @description Transaction result. Always returns 200 — the outcome  is determined by the status field in the response body. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionResponse"];
+                };
+            };
+        };
+    };
+    invokeMutator: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MutatorInvokeRequest"];
+            };
+        };
+        responses: {
+            /** @description Mutator result. Always returns 200 — the outcome is determined by the status field in the response body. */
             200: {
                 headers: {
                     [name: string]: unknown;

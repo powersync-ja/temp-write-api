@@ -1,4 +1,5 @@
 import type { CrudEntry as SDKCrudEntry, CrudTransaction } from '@powersync/web';
+import type { MutatorEnvelope } from '../mutators/runtime';
 
 export interface CrudTransaction_API {
   crud: CrudEntry_API[];
@@ -14,6 +15,14 @@ export interface CrudEntry_API {
   op_data?: Record<string, unknown>;
 }
 
+export interface MutatorInvokeRequest_API {
+  name: string;
+  args: Record<string, unknown>;
+  call_id: string;
+  transaction_id?: number;
+  user_id?: string;
+}
+
 export interface TransactionResponse {
   status: 'success' | 'retryable_error' | 'fatal_error';
   retry_after_ms?: number;
@@ -27,6 +36,7 @@ export interface CheckpointResponse {
 
 export interface WriteAPITransport {
   postTransaction(body: CrudTransaction_API): Promise<TransactionResponse>;
+  postMutator(body: MutatorInvokeRequest_API): Promise<TransactionResponse>;
   putCheckpoint(user_id: string, client_id: string): Promise<CheckpointResponse>;
 }
 
@@ -46,6 +56,10 @@ export interface WriteAPIClientOptions {
 
 export interface IWriteAPIClient {
   processTransaction(transaction: CrudTransaction): Promise<TransactionResult>;
+  processMutatorInvocation(
+    envelope: MutatorEnvelope,
+    transactionId?: number
+  ): Promise<TransactionResult>;
   create(table: string, id: string, data: Record<string, unknown>): Promise<TransactionResult>;
   update(table: string, id: string, data: Record<string, unknown>): Promise<TransactionResult>;
   delete(table: string, id: string): Promise<TransactionResult>;
@@ -63,7 +77,9 @@ export class WriteAPIClient implements IWriteAPIClient {
       op: op.op as 'PUT' | 'PATCH' | 'DELETE',
       table: op.table,
       ...(op.transactionId != null && { transaction_id: op.transactionId }),
-      ...(op.opData != null && { op_data: op.opData })
+      ...(op.opData != null && { op_data: op.opData }),
+      ...(op.previousValues != null && { previous_values: op.previousValues }),
+      ...(op.metadata != null && { metadata: op.metadata })
     }));
 
     const body: CrudTransaction_API = {
@@ -72,6 +88,32 @@ export class WriteAPIClient implements IWriteAPIClient {
     };
 
     const response = await this.options.transport.postTransaction(body);
+
+    const result: TransactionResult = {
+      status: response.status,
+      message: response.message,
+      failedOperation: response.failed_operation
+    };
+
+    if (response.status === 'success' && this.options.useCustomCheckpoints) {
+      const cp = await this.options.transport.putCheckpoint(this.options.userId, this.options.clientId);
+      result.checkpoint = cp.checkpoint;
+    }
+
+    return result;
+  }
+
+  async processMutatorInvocation(
+    envelope: MutatorEnvelope,
+    transactionId?: number
+  ): Promise<TransactionResult> {
+    const response = await this.options.transport.postMutator({
+      name: envelope.name,
+      args: (envelope.args as Record<string, unknown>) ?? {},
+      call_id: envelope.callId,
+      transaction_id: transactionId,
+      user_id: this.options.userId
+    });
 
     const result: TransactionResult = {
       status: response.status,
@@ -99,9 +141,7 @@ export class WriteAPIClient implements IWriteAPIClient {
     return this.sendSingle({ op: 'DELETE', table, id });
   }
 
-  private async sendSingle(
-    entry: Pick<CrudEntry_API, 'op' | 'table' | 'id' | 'op_data'>
-  ): Promise<TransactionResult> {
+  private async sendSingle(entry: Pick<CrudEntry_API, 'op' | 'table' | 'id' | 'op_data'>): Promise<TransactionResult> {
     const body: CrudTransaction_API = {
       crud: [{ client_id: this.nextClientId++, ...entry }]
     };

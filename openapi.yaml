@@ -61,6 +61,26 @@ paths:
               schema:
                 $ref: "#/components/schemas/TransactionResponse"
 
+  /api/mutators/invoke:
+    post:
+      operationId: invokeMutator
+      summary: Invoke a server-side mutator by name
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MutatorInvokeRequest"
+      responses:
+        "200":
+          description: >
+            Mutator result. Always returns 200 — the outcome
+            is determined by the status field in the response body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionResponse"
+
   /api/data/checkpoint:
     put:
       operationId: putCheckpoint
@@ -99,6 +119,33 @@ components:
         powersync_url:
           type: string
           description: PowerSync service URL
+
+    MutatorInvokeRequest:
+      type: object
+      required:
+        - name
+        - args
+        - call_id
+      properties:
+        name:
+          type: string
+          description: Registered mutator name
+        args:
+          type: object
+          additionalProperties: true
+          description: Mutator arguments. Validated server-side via the mutator's own zod schema.
+        call_id:
+          type: string
+          description: Client-generated id for this invocation
+        transaction_id:
+          type: integer
+          format: int64
+          description: ps_crud transaction_id this invocation came from, for logging/idempotency.
+        user_id:
+          type: string
+          description: >
+            Acting user id. Trusted from the body for v1 — replace with
+            JWT-extracted id once auth is wired.
 
     CrudTransaction:
       type: object

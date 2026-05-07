@@ -1,5 +1,5 @@
 import { NavigationPage } from '@/components/navigation/NavigationPage';
-import { useConnector } from '@/components/providers/SystemProvider';
+import { useMutators } from '@/components/providers/SystemProvider';
 import { TodoItemWidget } from '@/components/widgets/TodoItemWidget';
 import { LISTS_TABLE, TODOS_TABLE, TodoRecord } from '@/library/powersync/AppSchema';
 import AddIcon from '@mui/icons-material/Add';
@@ -18,9 +18,10 @@ import {
   styled
 } from '@mui/material';
 import Fab from '@mui/material/Fab';
-import { usePowerSync, useQuery } from '@powersync/react';
+import { useQuery } from '@powersync/react';
 import React, { Suspense } from 'react';
 import { useParams } from 'react-router-dom';
+import { v4 as uuid } from 'uuid';
 
 /**
  * useSearchParams causes the entire element to fall back to client side rendering
@@ -28,8 +29,7 @@ import { useParams } from 'react-router-dom';
  * and allow the root page to render on the server.
  */
 const TodoEditSection = () => {
-  const powerSync = usePowerSync();
-  const connector = useConnector();
+  const mutate = useMutators();
   const { id: listID } = useParams();
 
   const { data: [listRecord] } = useQuery<{ name: string }>(
@@ -46,48 +46,16 @@ const TodoEditSection = () => {
   const nameInputRef = React.createRef<HTMLInputElement>();
 
   const toggleCompletion = async (record: TodoRecord, completed: boolean) => {
-    const updatedRecord = { ...record, completed: completed };
-    if (completed) {
-      const userID = connector?.userId;
-      if (!userID) {
-        throw new Error(`Could not get user ID.`);
-      }
-      updatedRecord.completed_at = new Date().toISOString();
-      updatedRecord.completed_by = userID;
-    } else {
-      updatedRecord.completed_at = null;
-      updatedRecord.completed_by = null;
-    }
-    await powerSync.execute(
-      `UPDATE ${TODOS_TABLE}
-              SET completed = ?,
-                  completed_at = ?,
-                  completed_by = ?
-              WHERE id = ?`,
-      [completed, updatedRecord.completed_at, updatedRecord.completed_by, record.id]
-    );
+    await mutate.todoToggle({ id: record.id, completed });
   };
 
   const createNewTodo = async (description: string) => {
-    const userID = connector?.userId;
-    if (!userID) {
-      throw new Error(`Could not get user ID.`);
-    }
-
-    await powerSync.execute(
-      `INSERT INTO
-                ${TODOS_TABLE}
-                    (id, created_at, created_by, description, list_id, completed) 
-                VALUES
-                    (uuid(), datetime(), ?, ?, ?, ?)`,
-      [userID, description, listID!, false]
-    );
+    if (!listID) throw new Error('Missing list id');
+    await mutate.todoCreate({ id: uuid(), list_id: listID, description });
   };
 
   const deleteTodo = async (id: string) => {
-    await powerSync.writeTransaction(async (tx) => {
-      await tx.execute(`DELETE FROM ${TODOS_TABLE} WHERE id = ?`, [id]);
-    });
+    await mutate.todoDelete({ id });
   };
 
   if (!listRecord) {

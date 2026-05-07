@@ -17,6 +17,11 @@ export function createOpenAPIClient(baseUrl: string): OpenAPIClient {
         if (!data) throw new Error('No response from /api/data');
         return data;
       },
+      async postMutator(body) {
+        const { data } = await client.POST('/api/mutators/invoke', { body });
+        if (!data) throw new Error('No response from /api/mutators/invoke');
+        return data;
+      },
       async putCheckpoint(user_id, client_id) {
         const { data, error } = await client.PUT('/api/data/checkpoint', {
           body: { user_id, client_id }
