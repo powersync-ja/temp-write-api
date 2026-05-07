@@ -22,9 +22,12 @@ const listDeleteArgs = z.object({ id: z.string().uuid() });
 
 const listDelete: ClientMutator<typeof listDeleteArgs> = {
   args: listDeleteArgs,
-  run: async (args, tx) => {
-    await tx.execute(`DELETE FROM ${TODOS_TABLE} WHERE list_id = ?`, [args.id]);
-    await tx.execute(`DELETE FROM ${LISTS_TABLE} WHERE id = ?`, [args.id]);
+  run: async (args, tx, ctx) => {
+    await tx.execute(`UPDATE ${TODOS_TABLE} SET _deleted = TRUE, _metadata = ? WHERE list_id = ?`, [
+      ctx.metadata,
+      args.id
+    ]);
+    await tx.execute(`UPDATE ${LISTS_TABLE} SET _deleted = TRUE, _metadata = ? WHERE id = ?`, [ctx.metadata, args.id]);
   }
 };
 
@@ -68,8 +71,11 @@ const todoDeleteArgs = z.object({ id: z.string().uuid() });
 
 const todoDelete: ClientMutator<typeof todoDeleteArgs> = {
   args: todoDeleteArgs,
-  run: async (args, tx) => {
-    await tx.execute(`DELETE FROM ${TODOS_TABLE} WHERE id = ?`, [args.id]);
+  run: async (args, tx, ctx) => {
+    await tx.execute(
+      `UPDATE ${TODOS_TABLE} SET _deleted = TRUE, _metadata = ? WHERE id = ?`,
+      [ctx.metadata, args.id]
+    );
   }
 };
 
