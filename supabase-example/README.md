@@ -15,7 +15,6 @@ supabase-example/
 ```bash
 # 1. Start Supabase (generates signing key on first run)
 cd supabase && ./setup.sh
-supabase functions serve data
 
 # 2. Start PowerSync + Mongo
 cd ../powersync && cp .env.template .env && docker compose up -d

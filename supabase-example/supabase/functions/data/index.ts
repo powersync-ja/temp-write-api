@@ -7,8 +7,13 @@ import type { OpBody, OpResponse } from './types.ts';
 // SUPABASE_DB_URL is auto-injected by the Supabase CLI (`supabase functions serve`)
 // and present in hosted Supabase Edge Functions. In production it should point at
 // the Transaction Pooler (port 6543), not the direct DB.
-const uri = Deno.env.get('SUPABASE_DB_URL');
+let uri = Deno.env.get('SUPABASE_DB_URL');
 if (!uri) throw new Error('SUPABASE_DB_URL is required');
+// `supabase start` injects a SUPABASE_DB_URL whose host is the db container name
+// (e.g. supabase_db_powersync_demo). Deno's resolver rejects names with
+// underscores per RFC 1035, surfacing as `getaddrinfo ENOTFOUND` though libc
+// resolves them fine. Route through the host gateway instead.
+uri = uri.replace(/supabase_db_[^:/]+:\d+/, 'host.docker.internal:54322');
 
 const { updateBatch } = createPostgresPersister(uri);
 
