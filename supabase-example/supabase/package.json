@@ -1,0 +1,12 @@
+{
+  "name": "supabase-slice",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "generate-types": "openapi-typescript ./functions/data/openapi.yaml -o ./functions/data/generated/api.ts && node ./scripts/yaml-to-json.mjs ./functions/data/openapi.yaml ./functions/data/openapi.json"
+  },
+  "devDependencies": {
+    "js-yaml": "^4.1.0",
+    "openapi-typescript": "^7.13.0"
+  }
+}
