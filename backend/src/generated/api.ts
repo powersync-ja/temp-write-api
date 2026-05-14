@@ -4,267 +4,179 @@
  */
 
 export interface paths {
-  '/api/auth/token': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/data": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Apply a transaction of CRUD operations */
+        post: operations["postCrudTransaction"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** Get a JWT access token */
-    get: operations['getAuthToken'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/auth/keys': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
+    "/api/data/checkpoint": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /** Get a custom write checkpoint */
+        put: operations["putCheckpoint"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
     };
-    /** JWKS endpoint for PowerSync JWT validation */
-    get: operations['getAuthKeys'];
-    put?: never;
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/data': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    put?: never;
-    /** Apply a transaction of CRUD operations */
-    post: operations['postCrudTransaction'];
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
-  '/api/data/checkpoint': {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    get?: never;
-    /** Get a custom write checkpoint */
-    put: operations['putCheckpoint'];
-    post?: never;
-    delete?: never;
-    options?: never;
-    head?: never;
-    patch?: never;
-    trace?: never;
-  };
 }
 export type webhooks = Record<string, never>;
 export interface components {
-  schemas: {
-    TokenResponse: {
-      /** @description Signed JWT access token */
-      token: string;
-      /** @description PowerSync service URL */
-      powersync_url: string;
+    schemas: {
+        CrudTransaction: {
+            crud: components["schemas"]["CrudEntry"][];
+            /**
+             * Format: int64
+             * @description Groups changes from the same transaction; null if no explicit transaction
+             */
+            transaction_id?: number;
+        };
+        CrudEntry: {
+            /**
+             * Format: int64
+             * @description Auto-incrementing client-side id
+             */
+            client_id: number;
+            /** @description ID of the changed row */
+            id: string;
+            /**
+             * @description Type of change
+             * @enum {string}
+             */
+            op: "PUT" | "PATCH" | "DELETE";
+            /** @description Table that contained the change */
+            table: string;
+            /**
+             * Format: int64
+             * @description Auto-incrementing transaction id
+             */
+            transaction_id?: number;
+            /** @description Data associated with the change */
+            op_data?: {
+                [key: string]: unknown;
+            };
+            /** @description Previous values for UPDATE/DELETE (when trackPreviousValues is enabled) */
+            previous_values?: {
+                [key: string]: unknown;
+            };
+            /** @description Client-side metadata (when trackMetadata is enabled) */
+            metadata?: string;
+        };
+        TransactionResponse: {
+            /**
+             * @description success: entire transaction persisted, safe to complete. retryable_error: transient failure, transaction rolled back,
+             *       client should retry.
+             *     fatal_error: transaction rolled back due to a non-recoverable
+             *       issue — see failed_operation for details.
+             * @enum {string}
+             */
+            status: "success" | "retryable_error" | "fatal_error";
+            /** @description Suggested retry delay in ms. Only meaningful for retryable_error. */
+            retry_after_ms?: number;
+            /** @description Present when status is fatal_error. Identifies what caused the rollback. */
+            failed_operation?: components["schemas"]["FailedOperation"];
+            /** @description Human-readable summary for logging/debugging. */
+            message?: string;
+        };
+        FailedOperation: {
+            /** @description Machine-readable classification, e.g. CONFLICT, SCHEMA_MISMATCH, VALIDATION_ERROR, UNIQUE_VIOLATION, FOREIGN_KEY_VIOLATION. */
+            error_code: string;
+            /** @description Human-readable error detail. */
+            message?: string;
+        };
+        CheckpointRequest: {
+            user_id: string;
+            client_id: string;
+        };
+        CheckpointResponse: {
+            checkpoint: string;
+        };
+        MessageResponse: {
+            message: string;
+        };
     };
-    CrudTransaction: {
-      crud: components['schemas']['CrudEntry'][];
-      /**
-       * Format: int64
-       * @description Groups changes from the same transaction; null if no explicit transaction
-       */
-      transaction_id?: number;
-    };
-    CrudEntry: {
-      /**
-       * Format: int64
-       * @description Auto-incrementing client-side id
-       */
-      client_id: number;
-      /** @description ID of the changed row */
-      id: string;
-      /**
-       * @description Type of change
-       * @enum {string}
-       */
-      op: 'PUT' | 'PATCH' | 'DELETE';
-      /** @description Table that contained the change */
-      table: string;
-      /**
-       * Format: int64
-       * @description Auto-incrementing transaction id
-       */
-      transaction_id?: number;
-      /** @description Data associated with the change */
-      op_data?: {
-        [key: string]: unknown;
-      };
-      /** @description Previous values for UPDATE/DELETE (when trackPreviousValues is enabled) */
-      previous_values?: {
-        [key: string]: unknown;
-      };
-      /** @description Client-side metadata (when trackMetadata is enabled) */
-      metadata?: string;
-    };
-    TransactionResponse: {
-      /**
-       * @description success: entire transaction persisted, safe to complete. retryable_error: transient failure, transaction rolled back,
-       *       client should retry.
-       *     fatal_error: transaction rolled back due to a non-recoverable
-       *       issue — see failed_operation for details.
-       * @enum {string}
-       */
-      status: 'success' | 'retryable_error' | 'fatal_error';
-      /** @description Suggested retry delay in ms. Only meaningful for retryable_error. */
-      retry_after_ms?: number;
-      /** @description Present when status is fatal_error. Identifies what caused the rollback. */
-      failed_operation?: components['schemas']['FailedOperation'];
-      /** @description Human-readable summary for logging/debugging. */
-      message?: string;
-    };
-    FailedOperation: {
-      /** @description Machine-readable classification, e.g. CONFLICT, SCHEMA_MISMATCH, VALIDATION_ERROR, UNIQUE_VIOLATION, FOREIGN_KEY_VIOLATION. */
-      error_code: string;
-      /** @description Human-readable error detail. */
-      message?: string;
-    };
-    CheckpointRequest: {
-      user_id: string;
-      client_id: string;
-    };
-    CheckpointResponse: {
-      checkpoint: string;
-    };
-    JwksResponse: {
-      keys: {
-        [key: string]: unknown;
-      }[];
-    };
-    MessageResponse: {
-      message: string;
-    };
-  };
-  responses: never;
-  parameters: never;
-  requestBodies: never;
-  headers: never;
-  pathItems: never;
+    responses: never;
+    parameters: never;
+    requestBodies: never;
+    headers: never;
+    pathItems: never;
 }
 export type $defs = Record<string, never>;
 export interface operations {
-  getAuthToken: {
-    parameters: {
-      query?: {
-        /** @description Subject of the JWT. A random UUID is typically passed by the client. */
-        user_id?: string;
-      };
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description JWT token and PowerSync URL */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    postCrudTransaction: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          'application/json': components['schemas']['TokenResponse'];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CrudTransaction"];
+            };
         };
-      };
-    };
-  };
-  getAuthKeys: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody?: never;
-    responses: {
-      /** @description JSON Web Key Set */
-      200: {
-        headers: {
-          [name: string]: unknown;
+        responses: {
+            /** @description Transaction result. Always returns 200 — the outcome  is determined by the status field in the response body. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionResponse"];
+                };
+            };
         };
-        content: {
-          'application/json': components['schemas']['JwksResponse'];
-        };
-      };
     };
-  };
-  postCrudTransaction: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['CrudTransaction'];
-      };
-    };
-    responses: {
-      /** @description Transaction result. Always returns 200 — the outcome  is determined by the status field in the response body. */
-      200: {
-        headers: {
-          [name: string]: unknown;
+    putCheckpoint: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
         };
-        content: {
-          'application/json': components['schemas']['TransactionResponse'];
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CheckpointRequest"];
+            };
         };
-      };
+        responses: {
+            /** @description Checkpoint value */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CheckpointResponse"];
+                };
+            };
+            /** @description Invalid body */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+        };
     };
-  };
-  putCheckpoint: {
-    parameters: {
-      query?: never;
-      header?: never;
-      path?: never;
-      cookie?: never;
-    };
-    requestBody: {
-      content: {
-        'application/json': components['schemas']['CheckpointRequest'];
-      };
-    };
-    responses: {
-      /** @description Checkpoint value */
-      200: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['CheckpointResponse'];
-        };
-      };
-      /** @description Invalid body */
-      400: {
-        headers: {
-          [name: string]: unknown;
-        };
-        content: {
-          'application/json': components['schemas']['MessageResponse'];
-        };
-      };
-    };
-  };
 }

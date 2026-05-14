@@ -4,40 +4,6 @@
  */
 
 export interface paths {
-    "/api/auth/token": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** Get a JWT access token */
-        get: operations["getAuthToken"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
-    "/api/auth/keys": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        /** JWKS endpoint for PowerSync JWT validation */
-        get: operations["getAuthKeys"];
-        put?: never;
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
     "/api/data": {
         parameters: {
             query?: never;
@@ -76,12 +42,6 @@ export interface paths {
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
-        TokenResponse: {
-            /** @description Signed JWT access token */
-            token: string;
-            /** @description PowerSync service URL */
-            powersync_url: string;
-        };
         CrudTransaction: {
             crud: components["schemas"]["CrudEntry"][];
             /**
@@ -150,11 +110,6 @@ export interface components {
         CheckpointResponse: {
             checkpoint: string;
         };
-        JwksResponse: {
-            keys: {
-                [key: string]: unknown;
-            }[];
-        };
         MessageResponse: {
             message: string;
         };
@@ -167,49 +122,6 @@ export interface components {
 }
 export type $defs = Record<string, never>;
 export interface operations {
-    getAuthToken: {
-        parameters: {
-            query?: {
-                /** @description Subject of the JWT. A random UUID is typically passed by the client. */
-                user_id?: string;
-            };
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description JWT token and PowerSync URL */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["TokenResponse"];
-                };
-            };
-        };
-    };
-    getAuthKeys: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody?: never;
-        responses: {
-            /** @description JSON Web Key Set */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["JwksResponse"];
-                };
-            };
-        };
-    };
     postCrudTransaction: {
         parameters: {
             query?: never;

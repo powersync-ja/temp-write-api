@@ -26,7 +26,8 @@ app.use(
   OpenApiValidator.middleware({
     apiSpec: path.join(__dirname, '..', 'openapi.yaml'),
     validateRequests: true,
-    validateResponses: false
+    validateResponses: false,
+    ignorePaths: /^\/api\/auth(\/|$)/
   })
 );
 

@@ -38,7 +38,14 @@ export class DemoConnector implements PowerSyncBackendConnector {
   }
 
   async fetchCredentials() {
-    const { token } = await this.apiClient.fetchToken(this.userId);
+    const tokenEndpoint = 'api/auth/token';
+    const res = await fetch(`${this.config.backendUrl}/${tokenEndpoint}?user_id=${this.userId}`);
+
+    if (!res.ok) {
+      throw new Error(`Received ${res.status} from ${tokenEndpoint}: ${await res.text()}`);
+    }
+
+    const { token } = await res.json();
 
     return {
       endpoint: this.config.powersyncUrl,

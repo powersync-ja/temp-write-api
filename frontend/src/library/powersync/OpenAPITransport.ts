@@ -4,7 +4,6 @@ import type { WriteAPITransport } from './WriteAPIClient';
 
 export interface OpenAPIClient {
   transport: WriteAPITransport;
-  fetchToken(user_id: string): Promise<{ token: string; powersync_url: string }>;
 }
 
 export function createOpenAPIClient(baseUrl: string): OpenAPIClient {
@@ -24,13 +23,6 @@ export function createOpenAPIClient(baseUrl: string): OpenAPIClient {
         if (error) throw new Error(`Failed to get checkpoint: ${error.message}`);
         return data;
       }
-    },
-    async fetchToken(user_id: string) {
-      const { data, response } = await client.GET('/api/auth/token', {
-        params: { query: { user_id } }
-      });
-      if (!data) throw new Error(`Received ${response.status} from /api/auth/token`);
-      return data;
     }
   };
 }
