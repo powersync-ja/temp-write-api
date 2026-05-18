@@ -21,18 +21,12 @@ export interface TransactionResponse {
   message?: string;
 }
 
-export interface CheckpointResponse {
-  checkpoint: string;
-}
-
 export interface WriteAPITransport {
   postTransaction(body: CrudTransaction_API): Promise<TransactionResponse>;
-  putCheckpoint(user_id: string, client_id: string): Promise<CheckpointResponse>;
 }
 
 export interface TransactionResult {
   status: 'success' | 'retryable_error' | 'fatal_error';
-  checkpoint?: string;
   message?: string;
   failedOperation?: { error_code: string; message?: string };
 }
@@ -41,7 +35,6 @@ export interface WriteAPIClientOptions {
   transport: WriteAPITransport;
   userId: string;
   clientId: string;
-  useCustomCheckpoints?: boolean;
 }
 
 export interface IWriteAPIClient {
@@ -79,11 +72,6 @@ export class WriteAPIClient implements IWriteAPIClient {
       failedOperation: response.failed_operation
     };
 
-    if (response.status === 'success' && this.options.useCustomCheckpoints) {
-      const cp = await this.options.transport.putCheckpoint(this.options.userId, this.options.clientId);
-      result.checkpoint = cp.checkpoint;
-    }
-
     return result;
   }
 
@@ -99,9 +87,7 @@ export class WriteAPIClient implements IWriteAPIClient {
     return this.sendSingle({ op: 'DELETE', table, id });
   }
 
-  private async sendSingle(
-    entry: Pick<CrudEntry_API, 'op' | 'table' | 'id' | 'op_data'>
-  ): Promise<TransactionResult> {
+  private async sendSingle(entry: Pick<CrudEntry_API, 'op' | 'table' | 'id' | 'op_data'>): Promise<TransactionResult> {
     const body: CrudTransaction_API = {
       crud: [{ client_id: this.nextClientId++, ...entry }]
     };

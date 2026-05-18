@@ -12,21 +12,6 @@ export const createMongoPersister = async (uri: string, mapper: EntryMapper = mo
   await client.connect();
 
   const persister: Persister = {
-    createCheckpoint: async (user_id: string, client_id: string) => {
-      const doc = await db.collection('checkpoints').findOneAndUpdate(
-        {
-          user_id,
-          client_id
-        },
-        {
-          $inc: {
-            checkpoint: 1n
-          }
-        },
-        { upsert: true, returnDocument: 'after' }
-      );
-      return doc!.checkpoint;
-    },
     updateBatch: async (batch: CrudEntry[]) => {
       // TODO: Use batches & transactions.
       try {

@@ -21,23 +21,6 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/data/checkpoint": {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        get?: never;
-        /** Get a custom write checkpoint */
-        put: operations["putCheckpoint"];
-        post?: never;
-        delete?: never;
-        options?: never;
-        head?: never;
-        patch?: never;
-        trace?: never;
-    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -103,13 +86,6 @@ export interface components {
             /** @description Human-readable error detail. */
             message?: string;
         };
-        CheckpointRequest: {
-            user_id: string;
-            client_id: string;
-        };
-        CheckpointResponse: {
-            checkpoint: string;
-        };
         MessageResponse: {
             message: string;
         };
@@ -144,32 +120,8 @@ export interface operations {
                     "application/json": components["schemas"]["TransactionResponse"];
                 };
             };
-        };
-    };
-    putCheckpoint: {
-        parameters: {
-            query?: never;
-            header?: never;
-            path?: never;
-            cookie?: never;
-        };
-        requestBody: {
-            content: {
-                "application/json": components["schemas"]["CheckpointRequest"];
-            };
-        };
-        responses: {
-            /** @description Checkpoint value */
-            200: {
-                headers: {
-                    [name: string]: unknown;
-                };
-                content: {
-                    "application/json": components["schemas"]["CheckpointResponse"];
-                };
-            };
-            /** @description Invalid body */
-            400: {
+            /** @description Unexpected server error */
+            500: {
                 headers: {
                     [name: string]: unknown;
                 };

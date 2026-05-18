@@ -12,15 +12,8 @@ export function createOpenAPIClient(baseUrl: string): OpenAPIClient {
   return {
     transport: {
       async postTransaction(body) {
-        const { data } = await client.POST('/api/data', { body });
-        if (!data) throw new Error('No response from /api/data');
-        return data;
-      },
-      async putCheckpoint(user_id, client_id) {
-        const { data, error } = await client.PUT('/api/data/checkpoint', {
-          body: { user_id, client_id }
-        });
-        if (error) throw new Error(`Failed to get checkpoint: ${error.message}`);
+        const { data, error } = await client.POST('/api/data', { body });
+        if (error) throw new Error(`Failed to post transaction: ${error.message}`);
         return data;
       }
     }

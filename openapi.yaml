@@ -28,26 +28,8 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/TransactionResponse"
-
-  /api/data/checkpoint:
-    put:
-      operationId: putCheckpoint
-      summary: Get a custom write checkpoint
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CheckpointRequest"
-      responses:
-        "200":
-          description: Checkpoint value
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CheckpointResponse"
-        "400":
-          description: Invalid body
+        "500":
+          description: Unexpected server error
           content:
             application/json:
               schema:
@@ -151,25 +133,6 @@ components:
         message:
           type: string
           description: Human-readable error detail.
-
-    CheckpointRequest:
-      type: object
-      required:
-        - user_id
-        - client_id
-      properties:
-        user_id:
-          type: string
-        client_id:
-          type: string
-
-    CheckpointResponse:
-      type: object
-      required:
-        - checkpoint
-      properties:
-        checkpoint:
-          type: string
 
     MessageResponse:
       type: object

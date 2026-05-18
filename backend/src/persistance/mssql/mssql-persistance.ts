@@ -120,35 +120,6 @@ export const createMSSQLPersister = async (uri: string, mapper: EntryMapper = de
         }
         throw new RetryableError(err.message);
       }
-    },
-    async createCheckpoint(user_id: string, client_id: string) {
-      const transaction = pool.transaction();
-      try {
-        await transaction.begin();
-
-        const statement = `
-        MERGE INTO checkpoints AS t
-        USING (VALUES (@user_id, @client_id, @checkpoint)) AS source (user_id, client_id, checkpoint)
-          ON t.user_id = source.user_id AND t.client_id = source.client_id
-        WHEN MATCHED THEN
-          UPDATE SET checkpoint = t.checkpoint + 1
-        WHEN NOT MATCHED THEN
-          INSERT (user_id, client_id, checkpoint)
-          VALUES (source.user_id, source.client_id, source.checkpoint)
-        OUTPUT INSERTED.checkpoint;
-      `;
-        const request = transaction.request();
-        request.input('user_id', user_id);
-        request.input('client_id', client_id);
-        request.input('checkpoint', 1);
-        const response = await request.query(statement);
-
-        await transaction.commit();
-        return response.recordset[0].checkpoint;
-      } catch (e) {
-        await transaction.rollback();
-        throw e;
-      }
     }
   };
   return persister;

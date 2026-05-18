@@ -15,37 +15,6 @@ export const createMySQLPersister = (uri: string, mapper: EntryMapper = defaultM
   const pool = mysql.createPool(uri);
 
   const persister: Persister = {
-    async createCheckpoint(user_id: string, client_id: string) {
-      const connection = await pool.getConnection();
-      try {
-        await connection.beginTransaction();
-        await connection.query(
-          `
-      INSERT INTO checkpoints
-         (user_id, client_id, checkpoint)
-      VALUES (?, ?, 1)
-      ON DUPLICATE KEY UPDATE
-        checkpoint = checkpoint + 1;
-      `,
-          [user_id, client_id]
-        );
-        const [rows] = await connection.query<RowDataPacket[]>(
-          `
-           SELECT checkpoint FROM checkpoints WHERE user_id = ? AND client_id = ?;
-           `,
-          [user_id, client_id]
-        );
-
-        await connection.commit();
-        const checkpoint: bigint = rows[0].checkpoint;
-        return checkpoint;
-      } catch (ex) {
-        await connection.rollback();
-        throw ex;
-      } finally {
-        connection.release();
-      }
-    },
     updateBatch: async (batch: CrudEntry[]) => {
       const connection = await pool.getConnection();
       try {
