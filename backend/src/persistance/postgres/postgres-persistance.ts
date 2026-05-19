@@ -114,23 +114,6 @@ export const createPostgresPersister = (uri: string, mapper: EntryMapper = defau
       } finally {
         client.release();
       }
-    },
-    async createCheckpoint(user_id: string, client_id: string) {
-      const response = await pool.query(
-        `
-    INSERT INTO checkpoints(user_id, client_id, checkpoint)
-    VALUES
-        ($1, $2, '1')
-    ON
-        CONFLICT (user_id, client_id)
-    DO
-        UPDATE SET checkpoint = checkpoints.checkpoint + 1
-    RETURNING checkpoint;
-    `,
-        [user_id, client_id]
-      );
-      const checkpoint: bigint = response.rows[0].checkpoint;
-      return checkpoint;
     }
   };
   return persister;

@@ -30,19 +30,13 @@ export interface TransactionResponse {
   message?: string;
 }
 
-export interface CheckpointResponse {
-  checkpoint: string;
-}
-
 export interface WriteAPITransport {
   postTransaction(body: CrudTransaction_API): Promise<TransactionResponse>;
   postMutator(body: MutatorInvokeRequest_API): Promise<TransactionResponse>;
-  putCheckpoint(user_id: string, client_id: string): Promise<CheckpointResponse>;
 }
 
 export interface TransactionResult {
   status: 'success' | 'retryable_error' | 'fatal_error';
-  checkpoint?: string;
   message?: string;
   failedOperation?: { error_code: string; message?: string };
 }
@@ -51,15 +45,11 @@ export interface WriteAPIClientOptions {
   transport: WriteAPITransport;
   userId: string;
   clientId: string;
-  useCustomCheckpoints?: boolean;
 }
 
 export interface IWriteAPIClient {
   processTransaction(transaction: CrudTransaction): Promise<TransactionResult>;
-  processMutatorInvocation(
-    envelope: MutatorEnvelope,
-    transactionId?: number
-  ): Promise<TransactionResult>;
+  processMutatorInvocation(envelope: MutatorEnvelope, transactionId?: number): Promise<TransactionResult>;
   create(table: string, id: string, data: Record<string, unknown>): Promise<TransactionResult>;
   update(table: string, id: string, data: Record<string, unknown>): Promise<TransactionResult>;
   delete(table: string, id: string): Promise<TransactionResult>;
@@ -95,18 +85,10 @@ export class WriteAPIClient implements IWriteAPIClient {
       failedOperation: response.failed_operation
     };
 
-    if (response.status === 'success' && this.options.useCustomCheckpoints) {
-      const cp = await this.options.transport.putCheckpoint(this.options.userId, this.options.clientId);
-      result.checkpoint = cp.checkpoint;
-    }
-
     return result;
   }
 
-  async processMutatorInvocation(
-    envelope: MutatorEnvelope,
-    transactionId?: number
-  ): Promise<TransactionResult> {
+  async processMutatorInvocation(envelope: MutatorEnvelope, transactionId?: number): Promise<TransactionResult> {
     const response = await this.options.transport.postMutator({
       name: envelope.name,
       args: (envelope.args as Record<string, unknown>) ?? {},

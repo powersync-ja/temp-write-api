@@ -39,7 +39,14 @@ export class DemoConnector implements PowerSyncBackendConnector {
   }
 
   async fetchCredentials() {
-    const { token } = await this.apiClient.fetchToken(this.userId);
+    const tokenEndpoint = 'api/auth/token';
+    const res = await fetch(`${this.config.backendUrl}/${tokenEndpoint}?user_id=${this.userId}`);
+
+    if (!res.ok) {
+      throw new Error(`Received ${res.status} from ${tokenEndpoint}: ${await res.text()}`);
+    }
+
+    const { token } = await res.json();
 
     return {
       endpoint: this.config.powersyncUrl,
@@ -52,8 +59,7 @@ export class DemoConnector implements PowerSyncBackendConnector {
       this._writeClient = new WriteAPIClient({
         transport: this.apiClient.transport,
         userId: this.userId,
-        clientId: this._clientId!,
-        useCustomCheckpoints: import.meta.env.VITE_CHECKPOINT_MODE === 'custom'
+        clientId: this._clientId!
       });
     }
     return this._writeClient;
@@ -73,12 +79,23 @@ export class DemoConnector implements PowerSyncBackendConnector {
 
     switch (result.status) {
       case 'success':
-        await transaction.complete(result.checkpoint);
+        await transaction.complete();
         break;
       case 'fatal_error':
+        /**
+         * Instead of blocking the queue with these errors,
+         * discard the (rest of the) transaction.
+         *
+         * Note that these errors typically indicate a bug in the application.
+         * If protecting against data loss is important, save the failing records
+         * elsewhere instead of discarding, and/or notify the user.
+         */
         console.error('Fatal error:', result.failedOperation?.error_code, result.message);
+        await transaction.complete();
         break;
       case 'retryable_error':
+        // Error is retryable - e.g. network error or temporary server error.
+        // Throwing an error here causes this call to be retried after a delay.
         throw new Error(result.message ?? 'Retryable error');
     }
   }

@@ -9,38 +9,6 @@ servers:
     description: Local development
 
 paths:
-  /api/auth/token:
-    get:
-      operationId: getAuthToken
-      summary: Get a JWT access token
-      parameters:
-        - name: user_id
-          in: query
-          required: false
-          schema:
-            type: string
-            default: "UserID "
-          description: Subject of the JWT. A random UUID is typically passed by the client.
-      responses:
-        "200":
-          description: JWT token and PowerSync URL
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/TokenResponse"
-
-  /api/auth/keys:
-    get:
-      operationId: getAuthKeys
-      summary: JWKS endpoint for PowerSync JWT validation
-      responses:
-        "200":
-          description: JSON Web Key Set
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/JwksResponse"
-
   /api/data:
     post:
       operationId: postCrudTransaction
@@ -81,45 +49,8 @@ paths:
               schema:
                 $ref: "#/components/schemas/TransactionResponse"
 
-  /api/data/checkpoint:
-    put:
-      operationId: putCheckpoint
-      summary: Get a custom write checkpoint
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/CheckpointRequest"
-      responses:
-        "200":
-          description: Checkpoint value
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/CheckpointResponse"
-        "400":
-          description: Invalid body
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/MessageResponse"
-
 components:
   schemas:
-    TokenResponse:
-      type: object
-      required:
-        - token
-        - powersync_url
-      properties:
-        token:
-          type: string
-          description: Signed JWT access token
-        powersync_url:
-          type: string
-          description: PowerSync service URL
-
     MutatorInvokeRequest:
       type: object
       required:
@@ -243,36 +174,6 @@ components:
         message:
           type: string
           description: Human-readable error detail.
-
-    CheckpointRequest:
-      type: object
-      required:
-        - user_id
-        - client_id
-      properties:
-        user_id:
-          type: string
-        client_id:
-          type: string
-
-    CheckpointResponse:
-      type: object
-      required:
-        - checkpoint
-      properties:
-        checkpoint:
-          type: string
-
-    JwksResponse:
-      type: object
-      required:
-        - keys
-      properties:
-        keys:
-          type: array
-          items:
-            type: object
-            additionalProperties: true
 
     MessageResponse:
       type: object

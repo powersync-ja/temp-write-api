@@ -25,7 +25,6 @@ export type OpQuery<Op extends keyof operations> = operations[Op] extends { para
 
 export interface Persister {
   updateBatch: (batch: CrudEntry[]) => Promise<void>;
-  createCheckpoint: (user_id: string, client_id: string) => Promise<bigint>;
 }
 
 export type PersisterFactory = (uri: string, mapper?: EntryMapper) => Persister | Promise<Persister>;
