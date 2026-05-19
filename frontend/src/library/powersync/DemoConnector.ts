@@ -3,7 +3,8 @@ import { v4 as uuid } from 'uuid';
 import { AbstractPowerSyncDatabase, PowerSyncBackendConnector } from '@powersync/web';
 import { WriteAPIClient } from './WriteAPIClient';
 import { createOpenAPIClient, type OpenAPIClient } from './OpenAPITransport';
-import { parseMutatorEnvelope } from '../mutators/runtime';
+import { mutatorEnvelopeFromCrudEntry } from '../mutators/runtime';
+import { MUTATOR_CALLS_TABLE } from './AppSchema';
 
 export type DemoConfig = {
   backendUrl: string;
@@ -72,10 +73,20 @@ export class DemoConnector implements PowerSyncBackendConnector {
     this._clientId = await database.getClientId();
     const writeClient = await this.getWriteClient(database);
 
-    const envelope = parseMutatorEnvelope(transaction.crud[0]?.metadata);
-    const result = envelope
-      ? await writeClient.processMutatorInvocation(envelope, transaction.transactionId ?? undefined)
-      : await writeClient.processTransaction(transaction);
+    const mutatorEntry = transaction.crud.find((e) => e.table === MUTATOR_CALLS_TABLE);
+    const envelope = mutatorEntry ? mutatorEnvelopeFromCrudEntry(mutatorEntry) : null;
+    if (!envelope) {
+      console.error(
+        'Non-mutator transaction in upload queue; discarding',
+        transaction.crud.map((e) => e.table)
+      );
+      await transaction.complete();
+      return;
+    }
+    const result = await writeClient.processMutatorInvocation(
+      envelope,
+      transaction.transactionId ?? undefined
+    );
 
     switch (result.status) {
       case 'success':

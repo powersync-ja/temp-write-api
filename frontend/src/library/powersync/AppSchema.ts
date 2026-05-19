@@ -2,6 +2,7 @@ import { column, Schema, Table } from '@powersync/web';
 
 export const LISTS_TABLE = 'lists';
 export const TODOS_TABLE = 'todos';
+export const MUTATOR_CALLS_TABLE = 'mutator_calls';
 
 const todos = new Table(
   {
@@ -13,21 +14,28 @@ const todos = new Table(
     completed_by: column.text,
     completed: column.integer
   },
-  { indexes: { list: ['list_id'] }, trackMetadata: true }
+  { indexes: { list: ['list_id'] } }
 );
 
-const lists = new Table(
+const lists = new Table({
+  created_at: column.text,
+  name: column.text,
+  owner_id: column.text
+});
+
+const mutator_calls = new Table(
   {
-    created_at: column.text,
     name: column.text,
-    owner_id: column.text
+    args: column.text,
+    created_at: column.text
   },
-  { trackMetadata: true }
+  { insertOnly: true }
 );
 
 export const AppSchema = new Schema({
   todos,
-  lists
+  lists,
+  mutator_calls
 });
 
 export type Database = (typeof AppSchema)['types'];

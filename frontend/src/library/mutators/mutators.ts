@@ -11,9 +11,9 @@ const listCreate: ClientMutator<typeof listCreateArgs> = {
   args: listCreateArgs,
   run: async (args, tx, ctx) => {
     await tx.execute(
-      `INSERT INTO ${LISTS_TABLE} (id, created_at, name, owner_id, _metadata)
-       VALUES (?, datetime(), ?, ?, ?)`,
-      [args.id, args.name, ctx.userId, ctx.metadata]
+      `INSERT INTO ${LISTS_TABLE} (id, created_at, name, owner_id)
+       VALUES (?, datetime(), ?, ?)`,
+      [args.id, args.name, ctx.userId]
     );
   }
 };
@@ -22,12 +22,9 @@ const listDeleteArgs = z.object({ id: z.string().uuid() });
 
 const listDelete: ClientMutator<typeof listDeleteArgs> = {
   args: listDeleteArgs,
-  run: async (args, tx, ctx) => {
-    await tx.execute(`UPDATE ${TODOS_TABLE} SET _deleted = TRUE, _metadata = ? WHERE list_id = ?`, [
-      ctx.metadata,
-      args.id
-    ]);
-    await tx.execute(`UPDATE ${LISTS_TABLE} SET _deleted = TRUE, _metadata = ? WHERE id = ?`, [ctx.metadata, args.id]);
+  run: async (args, tx) => {
+    await tx.execute(`DELETE FROM ${TODOS_TABLE} WHERE list_id = ?`, [args.id]);
+    await tx.execute(`DELETE FROM ${LISTS_TABLE} WHERE id = ?`, [args.id]);
   }
 };
 
@@ -41,9 +38,9 @@ const todoCreate: ClientMutator<typeof todoCreateArgs> = {
   args: todoCreateArgs,
   run: async (args, tx, ctx) => {
     await tx.execute(
-      `INSERT INTO ${TODOS_TABLE} (id, created_at, created_by, description, list_id, completed, _metadata)
-       VALUES (?, datetime(), ?, ?, ?, 0, ?)`,
-      [args.id, ctx.userId, args.description, args.list_id, ctx.metadata]
+      `INSERT INTO ${TODOS_TABLE} (id, created_at, created_by, description, list_id, completed)
+       VALUES (?, datetime(), ?, ?, ?, 0)`,
+      [args.id, ctx.userId, args.description, args.list_id]
     );
   }
 };
@@ -60,9 +57,9 @@ const todoToggle: ClientMutator<typeof todoToggleArgs> = {
     const completedBy = args.completed ? ctx.userId : null;
     await tx.execute(
       `UPDATE ${TODOS_TABLE}
-         SET completed = ?, completed_at = ?, completed_by = ?, _metadata = ?
+         SET completed = ?, completed_at = ?, completed_by = ?
        WHERE id = ?`,
-      [args.completed ? 1 : 0, completedAt, completedBy, ctx.metadata, args.id]
+      [args.completed ? 1 : 0, completedAt, completedBy, args.id]
     );
   }
 };
@@ -71,11 +68,8 @@ const todoDeleteArgs = z.object({ id: z.string().uuid() });
 
 const todoDelete: ClientMutator<typeof todoDeleteArgs> = {
   args: todoDeleteArgs,
-  run: async (args, tx, ctx) => {
-    await tx.execute(
-      `UPDATE ${TODOS_TABLE} SET _deleted = TRUE, _metadata = ? WHERE id = ?`,
-      [ctx.metadata, args.id]
-    );
+  run: async (args, tx) => {
+    await tx.execute(`DELETE FROM ${TODOS_TABLE} WHERE id = ?`, [args.id]);
   }
 };
 

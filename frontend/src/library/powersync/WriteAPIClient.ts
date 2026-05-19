@@ -103,11 +103,6 @@ export class WriteAPIClient implements IWriteAPIClient {
       failedOperation: response.failed_operation
     };
 
-    if (response.status === 'success' && this.options.useCustomCheckpoints) {
-      const cp = await this.options.transport.putCheckpoint(this.options.userId, this.options.clientId);
-      result.checkpoint = cp.checkpoint;
-    }
-
     return result;
   }
 
