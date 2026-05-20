@@ -19,10 +19,6 @@ The endpoints are as follows:
 
    - Accepts a batch of CRUD operations (PUT/PATCH/DELETE) from the client.
 
-4. PUT `/api/data/checkpoint`
-
-   - Returns a custom write checkpoint for a given user/client.
-
 ## Packages
 
 [node-postgres](https://github.com/brianc/node-postgres) is used to interact with the Postgres database when a client performs requests to the `/api/data` endpoint.

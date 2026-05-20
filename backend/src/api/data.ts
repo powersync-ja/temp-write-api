@@ -14,7 +14,7 @@ if (!config.database.uri) {
   throw new Error('DATABASE_URI environment variable is required');
 }
 
-const { updateBatch, createCheckpoint } = await persistenceFactory(config.database.uri);
+const { updateBatch } = await persistenceFactory(config.database.uri);
 
 /**
  * Handle a CrudTransaction.
@@ -45,22 +45,6 @@ router.post(
         res.status(200).send({ status: 'retryable_error', message: msg });
       }
     }
-  }
-);
-
-router.put(
-  '/checkpoint',
-  async (
-    req: Request<{}, OpResponse<'putCheckpoint'>, OpBody<'putCheckpoint'>>,
-    res: Response<OpResponse<'putCheckpoint'>>
-  ) => {
-    const { user_id, client_id } = req.body;
-
-    const checkpoint = await createCheckpoint(user_id, client_id);
-
-    res.status(200).send({
-      checkpoint: String(checkpoint)
-    });
   }
 );
 

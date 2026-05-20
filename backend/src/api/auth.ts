@@ -2,8 +2,16 @@ import express, { type Request, type Response } from 'express';
 import { SignJWT, importJWK, type JWK, type KeyLike } from 'jose';
 import config from '../../config.js';
 import { generateKeyPair } from '../utils/generate-key.js';
-import type { OpQuery, OpResponse } from '../types.js';
 const router = express.Router();
+
+interface TokenResponse {
+  token: string;
+  powersync_url: string;
+}
+
+interface JwksResponse {
+  keys: JWK[];
+}
 
 interface ImportedKeys {
   privateKey: { alg: string; kid: string; key: KeyLike } | null;
@@ -56,10 +64,7 @@ async function ensureKeys(): Promise<void> {
  */
 router.get(
   '/token',
-  async (
-    req: Request<{}, OpResponse<'getAuthToken'>, never, OpQuery<'getAuthToken'>>,
-    res: Response<OpResponse<'getAuthToken'>>
-  ) => {
+  async (req: Request<{}, TokenResponse, never, { user_id?: string }>, res: Response<TokenResponse>) => {
     const user_id = req.query.user_id ?? 'UserID ';
 
     const token = await generateToken(user_id, {});
@@ -73,10 +78,10 @@ router.get(
 /**
  * This is the JWKS endpoint PowerSync uses to handle authentication
  */
-router.get('/keys', async (_req: Request, res: Response<OpResponse<'getAuthKeys'>>) => {
+router.get('/keys', async (_req: Request, res: Response<JwksResponse>) => {
   await ensureKeys();
   res.send({
-    keys: [{ ...keys.publicKey }]
+    keys: [{ ...keys.publicKey! }]
   });
 });
 
