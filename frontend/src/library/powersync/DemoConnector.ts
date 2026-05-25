@@ -88,6 +88,13 @@ export class DemoConnector implements PowerSyncBackendConnector {
         console.error('Fatal error:', result.failedOperation?.error_code, result.message);
         await transaction.complete();
         break;
+      case 'dead_lettered':
+        // Server persisted the transaction to its dead-letter queue.
+        // Local optimistic state will revert on the next sync. Surface
+        // to the user if appropriate.
+        console.warn('Dead-lettered:', result.failedOperation?.error_code, result.message);
+        await transaction.complete();
+        break;
       case 'retryable_error':
         // Error is retryable - e.g. network error or temporary server error.
         // Throwing an error here causes this call to be retried after a delay.

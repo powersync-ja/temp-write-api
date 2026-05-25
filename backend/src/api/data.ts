@@ -1,8 +1,10 @@
 import express, { type Request, type Response } from 'express';
+import { randomUUID } from 'crypto';
 import config from '../../config.js';
 import { factories } from '../persistance/persister-factories.js';
 import { FatalOperationError, RetryableError } from '../errors.js';
-import type { OpBody, OpResponse } from '../types.js';
+import { onDeadLetter } from '../dead-letter-hook.js';
+import type { DeadLetterEntry, OpBody, OpResponse } from '../types.js';
 
 const router = express.Router();
 
@@ -14,7 +16,7 @@ if (!config.database.uri) {
   throw new Error('DATABASE_URI environment variable is required');
 }
 
-const { updateBatch } = await persistenceFactory(config.database.uri);
+const persister = await persistenceFactory(config.database.uri, { onDeadLetter });
 
 /**
  * Handle a CrudTransaction.
@@ -26,12 +28,24 @@ router.post(
     res: Response<OpResponse<'postCrudTransaction'>>
   ) => {
     try {
-      await updateBatch(req.body.crud);
+      await persister.updateBatch(req.body.crud);
       res.status(200).send({ status: 'success', message: 'Transaction completed' });
     } catch (e) {
       if (e instanceof FatalOperationError) {
+        const entry: DeadLetterEntry = {
+          id: randomUUID(),
+          transaction_id: req.body.transaction_id ?? null,
+          crud: req.body.crud,
+          failed_client_id: e.failedOp.client_id,
+          failed_table: e.failedOp.table,
+          failed_op: e.failedOp.op,
+          error_code: e.errorCode,
+          error_message: e.message,
+          created_at: new Date().toISOString()
+        };
+        await persister.writeDeadLetter(entry);
         res.status(200).send({
-          status: 'fatal_error',
+          status: 'dead_lettered',
           message: e.message,
           failed_operation: { error_code: e.errorCode, message: e.message }
         });

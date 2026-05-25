@@ -1,16 +1,18 @@
 import { URL } from 'url';
 import sql from 'mssql';
-import type { Persister, CrudEntry } from '../../types.js';
+import type { Persister, PersisterConfig, CrudEntry, DeadLetterEntry } from '../../types.js';
 import { RetryableError, FatalOperationError } from '../../errors.js';
-import type { EntryMapper } from '../../mapping/types.js';
 import { defaultMapper } from '../../mapping/default.js';
 
 function escapeIdentifier(identifier: string): string {
   return `[${identifier}]`;
 }
 
-export const createMSSQLPersister = async (uri: string, mapper: EntryMapper = defaultMapper): Promise<Persister> => {
+export const createMSSQLPersister = async (uri: string, config: PersisterConfig = {}): Promise<Persister> => {
   console.debug('Using MSSQL Persister');
+
+  const mapper = config.mapper ?? defaultMapper;
+  const onDeadLetter = config.onDeadLetter;
 
   const url = new URL(uri);
 
@@ -35,10 +37,12 @@ export const createMSSQLPersister = async (uri: string, mapper: EntryMapper = de
   const persister: Persister = {
     updateBatch: async (batch: CrudEntry[]) => {
       const transaction = pool.transaction();
+      let currentOp: CrudEntry | null = null;
       try {
         await transaction.begin();
 
         for (const op of batch) {
+          currentOp = op;
           const mapped = mapper(op);
           if (mapped === null) continue;
 
@@ -114,11 +118,36 @@ export const createMSSQLPersister = async (uri: string, mapper: EntryMapper = de
         const err = e as Error & { number?: number };
         const num = err.number ?? 0;
         if (num === 2627 || num === 2601) {
-          throw new FatalOperationError('UNIQUE_VIOLATION', err.message);
+          throw new FatalOperationError('UNIQUE_VIOLATION', err.message, currentOp!);
         } else if (num === 547) {
-          throw new FatalOperationError('FOREIGN_KEY_VIOLATION', err.message);
+          throw new FatalOperationError('FOREIGN_KEY_VIOLATION', err.message, currentOp!);
         }
         throw new RetryableError(err.message);
+      }
+    },
+
+    writeDeadLetter: async (entry: DeadLetterEntry) => {
+      const request = pool.request();
+      request.input('id', sql.UniqueIdentifier, entry.id);
+      request.input('transaction_id', sql.BigInt, entry.transaction_id);
+      request.input('crud', sql.NVarChar(sql.MAX), JSON.stringify(entry.crud));
+      request.input('failed_client_id', sql.BigInt, entry.failed_client_id);
+      request.input('failed_table', sql.NVarChar, entry.failed_table);
+      request.input('failed_op', sql.NVarChar, entry.failed_op);
+      request.input('error_code', sql.NVarChar, entry.error_code);
+      request.input('error_message', sql.NVarChar(sql.MAX), entry.error_message);
+      request.input('created_at', sql.DateTime2, entry.created_at);
+      await request.query(
+        `INSERT INTO powersync_dead_letter
+           (id, transaction_id, crud, failed_client_id, failed_table,
+            failed_op, error_code, error_message, created_at)
+         VALUES (@id, @transaction_id, @crud, @failed_client_id, @failed_table,
+                 @failed_op, @error_code, @error_message, @created_at)`
+      );
+      if (onDeadLetter) {
+        void Promise.resolve(onDeadLetter(entry)).catch((err) =>
+          console.error('onDeadLetter hook failed:', err)
+        );
       }
     }
   };

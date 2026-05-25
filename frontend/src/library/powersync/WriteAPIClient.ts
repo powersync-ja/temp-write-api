@@ -15,7 +15,7 @@ export interface CrudEntry_API {
 }
 
 export interface TransactionResponse {
-  status: 'success' | 'retryable_error' | 'fatal_error';
+  status: 'success' | 'retryable_error' | 'fatal_error' | 'dead_lettered';
   retry_after_ms?: number;
   failed_operation?: { error_code: string; message?: string };
   message?: string;
@@ -26,7 +26,7 @@ export interface WriteAPITransport {
 }
 
 export interface TransactionResult {
-  status: 'success' | 'retryable_error' | 'fatal_error';
+  status: 'success' | 'retryable_error' | 'fatal_error' | 'dead_lettered';
   message?: string;
   failedOperation?: { error_code: string; message?: string };
 }
