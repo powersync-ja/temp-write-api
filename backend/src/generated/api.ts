@@ -70,9 +70,14 @@ export interface components {
              *       client should retry.
              *     fatal_error: transaction rolled back due to a non-recoverable
              *       issue — see failed_operation for details.
+             *     dead_lettered: a non-recoverable error occurred and the
+             *       transaction was persisted to the dead-letter queue for
+             *       later resolution. The client should complete the transaction
+             *       (the server has taken responsibility for it) and may surface
+             *       this to the user.
              * @enum {string}
              */
-            status: "success" | "retryable_error" | "fatal_error";
+            status: "success" | "retryable_error" | "fatal_error" | "dead_lettered";
             /** @description Suggested retry delay in ms. Only meaningful for retryable_error. */
             retry_after_ms?: number;
             /** @description Present when status is fatal_error. Identifies what caused the rollback. */

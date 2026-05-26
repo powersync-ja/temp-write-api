@@ -1,8 +1,7 @@
 import { URL } from 'url';
 import PG from 'pg';
-import type { Persister, CrudEntry } from '../../types.js';
+import type { Persister, PersisterConfig, CrudEntry, DeadLetterEntry } from '../../types.js';
 import { RetryableError, FatalOperationError } from '../../errors.js';
-import type { EntryMapper } from '../../mapping/types.js';
 import { defaultMapper } from '../../mapping/default.js';
 
 const { Pool } = PG;
@@ -11,8 +10,11 @@ function escapeIdentifier(identifier: string): string {
   return `"${identifier.replace(/"/g, '""').replace(/\./g, '"."')}"`;
 }
 
-export const createPostgresPersister = (uri: string, mapper: EntryMapper = defaultMapper): Persister => {
+export const createPostgresPersister = (uri: string, config: PersisterConfig = {}): Persister => {
   console.debug('Using Postgres Persister');
+
+  const mapper = config.mapper ?? defaultMapper;
+  const onDeadLetter = config.onDeadLetter;
 
   const url = new URL(uri);
 
@@ -31,10 +33,12 @@ export const createPostgresPersister = (uri: string, mapper: EntryMapper = defau
   const persister: Persister = {
     updateBatch: async (batch: CrudEntry[]) => {
       const client = await pool.connect();
+      let currentOp: CrudEntry | null = null;
       try {
         await client.query('BEGIN');
 
         for (const op of batch) {
+          currentOp = op;
           const mapped = mapper(op);
           if (mapped === null) continue;
 
@@ -104,15 +108,43 @@ export const createPostgresPersister = (uri: string, mapper: EntryMapper = defau
         const err = e as Error & { code?: string };
         const code = err.code ?? '';
         if (code === '23505') {
-          throw new FatalOperationError('UNIQUE_VIOLATION', err.message);
+          throw new FatalOperationError('UNIQUE_VIOLATION', err.message, currentOp!);
         } else if (code === '23503') {
-          throw new FatalOperationError('FOREIGN_KEY_VIOLATION', err.message);
+          throw new FatalOperationError('FOREIGN_KEY_VIOLATION', err.message, currentOp!);
         } else if (code.startsWith('42')) {
-          throw new FatalOperationError('SCHEMA_MISMATCH', err.message);
+          throw new FatalOperationError('SCHEMA_MISMATCH', err.message, currentOp!);
         }
         throw new RetryableError(err.message);
       } finally {
         client.release();
+      }
+    },
+
+    writeDeadLetter: async (entry: DeadLetterEntry) => {
+      const client = await pool.connect();
+      try {
+        await client.query(
+          `INSERT INTO powersync_dead_letter
+             (id, transaction_id, crud, failed_client_id, failed_table,
+              failed_op, error_code, error_message, created_at)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+          [
+            entry.id,
+            entry.transaction_id,
+            JSON.stringify(entry.crud),
+            entry.failed_client_id,
+            entry.failed_table,
+            entry.failed_op,
+            entry.error_code,
+            entry.error_message,
+            entry.created_at
+          ]
+        );
+      } finally {
+        client.release();
+      }
+      if (onDeadLetter) {
+        await Promise.resolve(onDeadLetter(entry)).catch((err) => console.error('onDeadLetter hook failed:', err));
       }
     }
   };

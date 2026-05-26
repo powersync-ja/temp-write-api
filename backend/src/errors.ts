@@ -1,3 +1,5 @@
+import type { CrudEntry } from './types.js';
+
 /** Transient failure (deadlock, timeout, connection error). Client should retry. */
 export class RetryableError extends Error {
   constructor(message: string) {
@@ -9,7 +11,8 @@ export class RetryableError extends Error {
 export class FatalOperationError extends Error {
   constructor(
     public readonly errorCode: string,
-    message: string
+    message: string,
+    public readonly failedOp: CrudEntry
   ) {
     super(message);
   }

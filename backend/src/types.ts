@@ -23,8 +23,26 @@ export type OpQuery<Op extends keyof operations> = operations[Op] extends { para
   ? Q
   : never;
 
-export interface Persister {
-  updateBatch: (batch: CrudEntry[]) => Promise<void>;
+export interface DeadLetterEntry {
+  id: string;
+  transaction_id: number | null;
+  crud: CrudEntry[];
+  failed_client_id: number;
+  failed_table: string;
+  failed_op: 'PUT' | 'PATCH' | 'DELETE';
+  error_code: string;
+  error_message: string;
+  created_at: string;
 }
 
-export type PersisterFactory = (uri: string, mapper?: EntryMapper) => Persister | Promise<Persister>;
+export interface Persister {
+  updateBatch: (batch: CrudEntry[]) => Promise<void>;
+  writeDeadLetter: (entry: DeadLetterEntry) => Promise<void>;
+}
+
+export interface PersisterConfig {
+  mapper?: EntryMapper;
+  onDeadLetter?: (entry: DeadLetterEntry) => void | Promise<void>;
+}
+
+export type PersisterFactory = (uri: string, config?: PersisterConfig) => Persister | Promise<Persister>;

@@ -98,13 +98,18 @@ components:
       properties:
         status:
           type: string
-          enum: [success, retryable_error, fatal_error]
+          enum: [success, retryable_error, fatal_error, dead_lettered]
           description: >
             success: entire transaction persisted, safe to complete.
             retryable_error: transient failure, transaction rolled back,
               client should retry.
             fatal_error: transaction rolled back due to a non-recoverable
               issue — see failed_operation for details.
+            dead_lettered: a non-recoverable error occurred and the
+              transaction was persisted to the dead-letter queue for
+              later resolution. The client should complete the transaction
+              (the server has taken responsibility for it) and may surface
+              this to the user.
         retry_after_ms:
           type: integer
           description: >
