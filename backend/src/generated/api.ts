@@ -56,8 +56,6 @@ export interface components {
              * @description ps_crud transaction_id this invocation came from, for logging/idempotency.
              */
             transaction_id?: number;
-            /** @description Acting user id. Trusted from the body for v1 — replace with JWT-extracted id once auth is wired. */
-            user_id?: string;
         };
         CrudTransaction: {
             crud: components["schemas"]["CrudEntry"][];
@@ -145,13 +143,22 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Transaction result. Always returns 200 — the outcome  is determined by the status field in the response body. */
+            /** @description Transaction result. Always returns 200 — the outcome is determined by the status field in the response body. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
                     "application/json": components["schemas"]["TransactionResponse"];
+                };
+            };
+            /** @description Missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
                 };
             };
         };
@@ -176,6 +183,15 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["TransactionResponse"];
+                };
+            };
+            /** @description Missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
                 };
             };
         };

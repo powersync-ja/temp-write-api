@@ -20,7 +20,6 @@ export interface MutatorInvokeRequest_API {
   args: Record<string, unknown>;
   call_id: string;
   transaction_id?: number;
-  user_id?: string;
 }
 
 export interface TransactionResponse {
@@ -93,8 +92,7 @@ export class WriteAPIClient implements IWriteAPIClient {
       name: envelope.name,
       args: (envelope.args as Record<string, unknown>) ?? {},
       call_id: envelope.callId,
-      transaction_id: transactionId,
-      user_id: this.options.userId
+      transaction_id: transactionId
     });
 
     const result: TransactionResult = {

@@ -45,7 +45,7 @@ if (config.database.type !== 'postgres') {
       req: Request<{}, OpResponse<'invokeMutator'>, OpBody<'invokeMutator'>>,
       res: Response<OpResponse<'invokeMutator'>>
     ) => {
-      const { name, args: rawArgs, user_id } = req.body;
+      const { name, args: rawArgs } = req.body;
       const mutator = (serverMutators as Record<string, ServerMutator>)[name];
 
       if (!mutator) {
@@ -70,16 +70,9 @@ if (config.database.type !== 'postgres') {
         return;
       }
 
-      // TODO: replace user_id from body with JWT-extracted id once auth lands.
-      const userId = user_id;
-      if (!userId) {
-        res.status(200).send({
-          status: 'fatal_error',
-          message: 'Missing user_id',
-          failed_operation: { error_code: 'VALIDATION_ERROR', message: 'user_id is required for v1 (until JWT auth lands).' }
-        });
-        return;
-      }
+      // Verified by requireAuth(verifier); the acting identity comes from the
+      // token's sub, never from the request body.
+      const userId = req.auth!.sub;
 
       const client = await pool.connect();
       try {

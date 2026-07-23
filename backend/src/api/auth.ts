@@ -58,6 +58,15 @@ async function ensureKeys(): Promise<void> {
 }
 
 /**
+ * The public JWK this backend signs tokens with, used by the demo
+ * PowerSyncVerifier to verify write requests.
+ */
+export async function getPublicJwk(): Promise<JWK> {
+  await ensureKeys();
+  return keys.publicKey!;
+}
+
+/**
  * Get the JWT token that PowerSync will use to authenticate the user
  * Provide an optional user_id in the url params query string to use as the subject of the token
  * If no id is provided, "UserID" is used as the subject
