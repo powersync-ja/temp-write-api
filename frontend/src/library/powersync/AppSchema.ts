@@ -4,6 +4,11 @@ export const LISTS_TABLE = 'lists';
 export const TODOS_TABLE = 'todos';
 export const MUTATOR_CALLS_TABLE = 'mutator_calls';
 
+// NOTE: This hand-written PowerSync schema duplicates the sqlite tables in
+// shared/schema/todos.sqlite.ts. Unifying it via `new DrizzleAppSchema(sqliteSchema)`
+// requires a SINGLE drizzle-orm copy (the driver rejects/skips tables from a second
+// copy at both type- and run-time). That is blocked on the pnpm-workspace migration
+// (see shared/MIGRATION.md); do #5 together with the workspace move.
 const todos = new Table(
   {
     list_id: column.text,
@@ -40,7 +45,4 @@ export const AppSchema = new Schema({
 
 export type Database = (typeof AppSchema)['types'];
 export type TodoRecord = Database['todos'];
-// OR:
-// export type Todo = RowType<typeof todos>;
-
 export type ListRecord = Database['lists'];

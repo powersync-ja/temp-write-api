@@ -3,7 +3,7 @@ import { v4 as uuid } from 'uuid';
 import { AbstractPowerSyncDatabase, PowerSyncBackendConnector } from '@powersync/web';
 import { WriteAPIClient } from './WriteAPIClient';
 import { createOpenAPIClient, type OpenAPIClient } from './OpenAPITransport';
-import { mutatorEnvelopeFromCrudEntry } from '../mutators/runtime';
+import { mutatorEnvelopeFromCrudEntry } from '../mutators/envelope';
 import { MUTATOR_CALLS_TABLE } from './AppSchema';
 
 export type DemoConfig = {
