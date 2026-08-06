@@ -8,7 +8,6 @@ export const MUTATOR_CALLS_TABLE = 'mutator_calls';
 export const AppSchema = new DrizzleAppSchema({
   todos,
   lists,
-  // Insert-only; queues mutator calls for upload.
   mutator_calls: { tableDefinition: mutatorCalls, options: { insertOnly: true } }
 });
 

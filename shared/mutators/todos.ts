@@ -1,13 +1,11 @@
-import { eq } from 'drizzle-orm';
-import { z } from 'zod';
-import type { Mutator } from './runtime.js';
-
-// One body for both dialects; Drizzle handles the boolean/timestamp/placeholder differences.
+import { eq } from "drizzle-orm";
+import { z } from "zod";
+import type { Mutator } from "./runtime.js";
 
 export const todoCreateArgs = z.object({
   id: z.uuid(),
   list_id: z.uuid(),
-  description: z.string().min(1)
+  description: z.string().min(1),
 });
 
 export const todoCreate: Mutator<typeof todoCreateArgs> = {
@@ -19,14 +17,14 @@ export const todoCreate: Mutator<typeof todoCreateArgs> = {
       createdBy: userId,
       description: args.description,
       completed: false,
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
     });
-  }
+  },
 };
 
 export const todoToggleArgs = z.object({
   id: z.uuid(),
-  completed: z.boolean()
+  completed: z.boolean(),
 });
 
 export const todoToggle: Mutator<typeof todoToggleArgs> = {
@@ -37,10 +35,10 @@ export const todoToggle: Mutator<typeof todoToggleArgs> = {
       .set({
         completed: args.completed,
         completedAt: args.completed ? new Date().toISOString() : null,
-        completedBy: args.completed ? userId : null
+        completedBy: args.completed ? userId : null,
       })
       .where(eq(schema.todos.id, args.id));
-  }
+  },
 };
 
 export const todoDeleteArgs = z.object({ id: z.uuid() });
@@ -49,5 +47,5 @@ export const todoDelete: Mutator<typeof todoDeleteArgs> = {
   args: todoDeleteArgs,
   run: async (args, { tx, schema }) => {
     await tx.delete(schema.todos).where(eq(schema.todos.id, args.id));
-  }
+  },
 };

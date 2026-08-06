@@ -1,11 +1,9 @@
-import type { z } from 'zod';
-import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
+import type { z } from "zod";
+import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
 
-// Mutators are typed against the Postgres schema; the client casts its sqlite schema/tx
-// to these at the call site.
-export type AppSchema = typeof import('../schema/todos.pg.js');
+// Mutators are typed against the Postgres schema
+export type AppSchema = typeof import("../schema/todos.pg.js");
 
-// Both a db and a transaction handle satisfy PgDatabase.
 export type AppTx = PgDatabase<PgQueryResultHKT, AppSchema>;
 
 export interface MutatorCtx {

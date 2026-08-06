@@ -1,23 +1,33 @@
-import type { SharedMutators } from './runtime.js';
-import { listCreate, listDelete } from './lists.js';
-import { todoCreate, todoToggle, todoDelete } from './todos.js';
+import type { SharedMutators } from "./runtime.js";
+import { listCreate, listDelete } from "./lists.js";
+import { todoCreate, todoToggle, todoDelete } from "./todos.js";
 
-// Registry the client and backend dispatch on by name.
 export const sharedMutators = {
   listCreate,
   listDelete,
   todoCreate,
   todoToggle,
-  todoDelete
+  todoDelete,
 } satisfies SharedMutators;
 
-export type { AppSchema, AppTx, MutatorCtx, Mutator, SharedMutators } from './runtime.js';
-export { listCreate, listCreateArgs, listDelete, listDeleteArgs } from './lists.js';
+export type {
+  AppSchema,
+  AppTx,
+  MutatorCtx,
+  Mutator,
+  SharedMutators,
+} from "./runtime.js";
+export {
+  listCreate,
+  listCreateArgs,
+  listDelete,
+  listDeleteArgs,
+} from "./lists.js";
 export {
   todoCreate,
   todoCreateArgs,
   todoToggle,
   todoToggleArgs,
   todoDelete,
-  todoDeleteArgs
-} from './todos.js';
+  todoDeleteArgs,
+} from "./todos.js";

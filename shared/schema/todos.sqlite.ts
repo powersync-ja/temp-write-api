@@ -22,7 +22,6 @@ export const lists = sqliteTable("lists", {
   ownerId: text("owner_id").notNull(),
 });
 
-// Insert-only; queues mutator calls for upload.
 export const mutatorCalls = sqliteTable("mutator_calls", {
   id: text("id").primaryKey(),
   name: text("name").notNull(),
