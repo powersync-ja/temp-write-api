@@ -2,7 +2,7 @@ import { NavigationPanelContextProvider } from '@/components/navigation/Navigati
 import { AppSchema } from '@/library/powersync/AppSchema';
 import { DemoConnector } from '@/library/powersync/DemoConnector';
 import { createSharedMutators } from '@/library/mutators/sharedClient';
-import { sharedMutators } from '@shared/mutators';
+import { sharedMutators } from '@write-api/shared/mutators';
 import { CircularProgress } from '@mui/material';
 import { PowerSyncContext } from '@powersync/react';
 import { PowerSyncDatabase } from '@powersync/web';
@@ -23,7 +23,6 @@ export const db = new PowerSyncDatabase({
 const ConnectorContext = React.createContext<DemoConnector | null>(null);
 export const useConnector = () => React.useContext(ConnectorContext);
 
-// Isomorphic mutators — the SAME definitions the backend runs, applied locally via Drizzle.
 const MutatorsContext = React.createContext<ReturnType<typeof createSharedMutators> | null>(null);
 export const useMutators = () => {
   const ctx = React.useContext(MutatorsContext);

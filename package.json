@@ -2,14 +2,6 @@
   "name": "write-api-root",
   "private": true,
   "type": "module",
-  "description": "Root deps for the shared/ isomorphic-mutator module (resolved by both frontend and backend). See shared/MIGRATION.md.",
-  "dependencies": {
-    "drizzle-orm": "0.45.2",
-    "pg": "^8.13.0",
-    "zod": "^4.4.3"
-  },
-  "devDependencies": {
-    "@types/pg": "^8.20.0"
-  },
+  "description": "",
   "packageManager": "pnpm@9.12.3"
 }

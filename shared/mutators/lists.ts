@@ -3,7 +3,7 @@ import { z } from 'zod';
 import type { Mutator } from './runtime.js';
 
 export const listCreateArgs = z.object({
-  id: z.string().uuid(),
+  id: z.uuid(),
   name: z.string().min(1)
 });
 
@@ -19,7 +19,7 @@ export const listCreate: Mutator<typeof listCreateArgs> = {
   }
 };
 
-export const listDeleteArgs = z.object({ id: z.string().uuid() });
+export const listDeleteArgs = z.object({ id: z.uuid() });
 
 export const listDelete: Mutator<typeof listDeleteArgs> = {
   args: listDeleteArgs,

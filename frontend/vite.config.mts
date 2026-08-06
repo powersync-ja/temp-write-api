@@ -24,10 +24,6 @@ export default defineConfig({
   resolve: {
     alias: [
       {
-        find: '@shared',
-        replacement: fileURLToPath(new URL('../shared', import.meta.url))
-      },
-      {
         find: '@',
         replacement: fileURLToPath(new URL('./src', import.meta.url))
       }

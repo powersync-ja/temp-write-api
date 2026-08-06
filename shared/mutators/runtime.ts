@@ -1,15 +1,11 @@
 import type { z } from 'zod';
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core';
 
-// The canonical schema type is the Postgres table set. The mutator bodies are written
-// and type-checked against these types; the client casts its (structurally aligned)
-// sqlite schema to this at the injection site. See "Cross-dialect typing" in
-// drizzle-plan.md for why we type against one dialect rather than a shared interface.
+// Mutators are typed against the Postgres schema; the client casts its sqlite schema/tx
+// to these at the call site.
 export type AppSchema = typeof import('../schema/todos.pg.js');
 
-// A transaction handle. `PgTransaction` extends `PgDatabase`, and `NodePgDatabase`
-// extends `PgDatabase`, so both a top-level db and a `db.transaction(tx => ...)` handle
-// are assignable here — the mutator body only touches the shared insert/update/delete API.
+// Both a db and a transaction handle satisfy PgDatabase.
 export type AppTx = PgDatabase<PgQueryResultHKT, AppSchema>;
 
 export interface MutatorCtx {

@@ -12,16 +12,23 @@
     "generate-types": "openapi-typescript ../openapi.yaml -o src/generated/api.ts"
   },
   "dependencies": {
+    "@write-api/shared": "workspace:*",
     "dotenv": "^16.3.1",
+    "drizzle-orm": "0.45.2",
     "express": "^4.18.2",
     "express-openapi-validator": "^5.6.2",
     "jose": "^5.3.0",
     "mongodb": "^6.9.0",
     "mssql": "^12.1.0",
-    "mysql2": "^3.11.3",
+    "mysql2": "3.11.3",
     "pg": "^8.11.3",
     "winston": "^3.11.0",
     "zod": "^4.4.3"
+  },
+  "dependenciesMeta": {
+    "@write-api/shared": {
+      "injected": true
+    }
   },
   "devDependencies": {
     "@types/express": "^5.0.6",

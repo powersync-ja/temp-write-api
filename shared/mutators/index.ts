@@ -1,9 +1,8 @@
 import type { SharedMutators } from './runtime.js';
 import { listCreate, listDelete } from './lists.js';
-import { todoCreate, todoDelete } from './todos.js';
-import { todoToggle } from './todoToggle.js';
+import { todoCreate, todoToggle, todoDelete } from './todos.js';
 
-// The single registry, keyed by mutator name — both client and backend dispatch on this.
+// Registry the client and backend dispatch on by name.
 export const sharedMutators = {
   listCreate,
   listDelete,
@@ -14,5 +13,11 @@ export const sharedMutators = {
 
 export type { AppSchema, AppTx, MutatorCtx, Mutator, SharedMutators } from './runtime.js';
 export { listCreate, listCreateArgs, listDelete, listDeleteArgs } from './lists.js';
-export { todoCreate, todoCreateArgs, todoDelete, todoDeleteArgs } from './todos.js';
-export { todoToggle, todoToggleArgs } from './todoToggle.js';
+export {
+  todoCreate,
+  todoCreateArgs,
+  todoToggle,
+  todoToggleArgs,
+  todoDelete,
+  todoDeleteArgs
+} from './todos.js';

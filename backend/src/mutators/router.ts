@@ -6,8 +6,8 @@ import { URL } from 'url';
 import config from '../../config.js';
 import { FatalOperationError, RetryableError } from '../errors.js';
 import type { OpBody, OpResponse } from '../types.js';
-import { sharedMutators, type Mutator } from '../../../shared/mutators/index.js';
-import * as pgSchema from '../../../shared/schema/todos.pg.js';
+import { sharedMutators, type Mutator } from '@write-api/shared/mutators';
+import * as pgSchema from '@write-api/shared/schema/todos.pg';
 
 const { Pool } = PG;
 
@@ -42,7 +42,7 @@ if (config.database.type !== 'postgres') {
 
   const drizzleDb = drizzle(pool, { schema: pgSchema });
 
-  // Maps a thrown error to the shared TransactionResponse shape.
+  // Map an error to the response shape.
   const sendPgError = (res: Response<OpResponse<'invokeMutator'>>, e: unknown): void => {
     if (e instanceof FatalOperationError) {
       res.status(200).send({
@@ -89,8 +89,7 @@ if (config.database.type !== 'postgres') {
     ) => {
       const { name, args: rawArgs } = req.body;
 
-      // All mutators are isomorphic: the SAME shared definition the client runs, applied
-      // here to Postgres via Drizzle.
+      // Same shared definition the client runs, applied to Postgres via Drizzle.
       const mutator = (sharedMutators as Record<string, Mutator>)[name];
       if (!mutator) {
         res.status(200).send({

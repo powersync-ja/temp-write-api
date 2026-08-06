@@ -21,7 +21,7 @@ importers:
         specifier: ^0.2.3
         version: 0.2.3(esbuild@0.21.5)
       '@journeyapps/wa-sqlite':
-        specifier: latest
+        specifier: 1.7.0
         version: 1.7.0
       '@mui/icons-material':
         specifier: ^5.15.15
@@ -33,13 +33,13 @@ importers:
         specifier: ^6.19.6
         version: 6.20.4(@mui/material@5.18.0(@emotion/react@11.14.0(@types/react@18.3.28)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.28)(react@18.3.1))(@types/react@18.3.28)(react@18.3.1))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1))(@mui/system@5.18.0(@emotion/react@11.14.0(@types/react@18.3.28)(react@18.3.1))(@emotion/styled@11.14.1(@emotion/react@11.14.0(@types/react@18.3.28)(react@18.3.1))(@types/react@18.3.28)(react@18.3.1))(@types/react@18.3.28)(react@18.3.1))(@types/react@18.3.28)(react-dom@18.3.1(react@18.3.1))(react@18.3.1)
       '@powersync/drizzle-driver':
-        specifier: ^0.7.4
+        specifier: 0.7.4
         version: 0.7.4(@powersync/common@1.57.2)(drizzle-orm@0.45.2)
       '@powersync/react':
-        specifier: latest
+        specifier: 1.10.0
         version: 1.10.0(@powersync/common@1.57.2)(react@18.3.1)
       '@powersync/web':
-        specifier: latest
+        specifier: 1.37.2
         version: 1.37.2(@journeyapps/wa-sqlite@1.7.0)(@powersync/common@1.57.2)
       '@supabase/supabase-js':
         specifier: ^2.39.7
