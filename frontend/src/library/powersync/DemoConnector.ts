@@ -1,7 +1,7 @@
 import { v4 as uuid } from 'uuid';
 
-import { AbstractPowerSyncDatabase, PowerSyncBackendConnector } from '@powersync/web';
-import { WriteAPIClient } from './WriteAPIClient';
+import { AbstractPowerSyncDatabase, PowerSyncBackendConnector, type CrudTransaction } from '@powersync/web';
+import { WriteAPIClient, type TransactionResult } from './WriteAPIClient';
 import { createOpenAPIClient, type OpenAPIClient } from './OpenAPITransport';
 import { mutatorEnvelopeFromCrudEntry } from '../mutators/runtime';
 import { MUTATOR_CALLS_TABLE } from './AppSchema';
@@ -12,6 +12,12 @@ export type DemoConfig = {
 };
 
 const USER_ID_STORAGE_KEY = 'ps_user_id';
+
+const fatalResult = (errorCode: string, message: string): TransactionResult => ({
+  status: 'fatal_error',
+  message,
+  failedOperation: { error_code: errorCode, message }
+});
 
 export class DemoConnector implements PowerSyncBackendConnector {
   readonly config: DemoConfig;
@@ -85,6 +91,42 @@ export class DemoConnector implements PowerSyncBackendConnector {
     return this._writeClient;
   }
 
+  /**
+   * Route a CRUD transaction to the endpoint that matches its shape.
+   */
+  private async uploadTransaction(
+    writeClient: WriteAPIClient,
+    transaction: CrudTransaction
+  ): Promise<TransactionResult> {
+    const mutatorEntries = transaction.crud.filter((e) => e.table === MUTATOR_CALLS_TABLE);
+
+    // No envelope: a write made against the tables directly, outside any mutator.
+    if (mutatorEntries.length === 0) {
+      console.warn(
+        'Uploading non-mutator transaction as raw CRUD',
+        transaction.crud.map((e) => e.table)
+      );
+      return writeClient.processTransaction(transaction);
+    }
+
+    if (mutatorEntries.length > 1) {
+      return fatalResult(
+        'MULTIPLE_MUTATOR_CALLS',
+        `Expected one mutator call per transaction, found ${mutatorEntries.length}`
+      );
+    }
+
+    const envelope = mutatorEnvelopeFromCrudEntry(mutatorEntries[0]);
+    if (!envelope) {
+      return fatalResult(
+        'MALFORMED_MUTATOR_CALL',
+        `Could not read a mutator envelope from ${MUTATOR_CALLS_TABLE} entry ${mutatorEntries[0].id}`
+      );
+    }
+
+    return writeClient.processMutatorInvocation(envelope, transaction.transactionId ?? undefined);
+  }
+
   async uploadData(database: AbstractPowerSyncDatabase): Promise<void> {
     const transaction = await database.getNextCrudTransaction();
     if (!transaction) return;
@@ -92,20 +134,7 @@ export class DemoConnector implements PowerSyncBackendConnector {
     this._clientId = await database.getClientId();
     const writeClient = await this.getWriteClient(database);
 
-    const mutatorEntry = transaction.crud.find((e) => e.table === MUTATOR_CALLS_TABLE);
-    const envelope = mutatorEntry ? mutatorEnvelopeFromCrudEntry(mutatorEntry) : null;
-    if (!envelope) {
-      console.error(
-        'Non-mutator transaction in upload queue; discarding',
-        transaction.crud.map((e) => e.table)
-      );
-      await transaction.complete();
-      return;
-    }
-    const result = await writeClient.processMutatorInvocation(
-      envelope,
-      transaction.transactionId ?? undefined
-    );
+    const result = await this.uploadTransaction(writeClient, transaction);
 
     switch (result.status) {
       case 'success':
