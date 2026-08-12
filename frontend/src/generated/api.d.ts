@@ -21,10 +21,42 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/mutators/invoke": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Invoke a server-side mutator by name */
+        post: operations["invokeMutator"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
     schemas: {
+        MutatorInvokeRequest: {
+            /** @description Registered mutator name */
+            name: string;
+            /** @description Mutator arguments. Validated server-side via the mutator's own zod schema. */
+            args: {
+                [key: string]: unknown;
+            };
+            /** @description Client-generated id for this invocation */
+            call_id: string;
+            /**
+             * Format: int64
+             * @description ps_crud transaction_id this invocation came from, for logging/idempotency.
+             */
+            transaction_id?: number;
+        };
         CrudTransaction: {
             crud: components["schemas"]["CrudEntry"][];
             /**
@@ -111,7 +143,7 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Transaction result. Always returns 200 — the outcome  is determined by the status field in the response body. */
+            /** @description Transaction result. Always returns 200 — the outcome is determined by the status field in the response body. */
             200: {
                 headers: {
                     [name: string]: unknown;
@@ -120,8 +152,41 @@ export interface operations {
                     "application/json": components["schemas"]["TransactionResponse"];
                 };
             };
-            /** @description Unexpected server error */
-            500: {
+            /** @description Missing or invalid token */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MessageResponse"];
+                };
+            };
+        };
+    };
+    invokeMutator: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["MutatorInvokeRequest"];
+            };
+        };
+        responses: {
+            /** @description Mutator result. Always returns 200 — the outcome is determined by the status field in the response body. */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TransactionResponse"];
+                };
+            };
+            /** @description Missing or invalid token */
+            401: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -13,6 +13,8 @@ paths:
     post:
       operationId: postCrudTransaction
       summary: Apply a transaction of CRUD operations
+      security:
+        - bearerAuth: []
       requestBody:
         required: true
         content:
@@ -22,21 +24,78 @@ paths:
       responses:
         "200":
           description: >
-            Transaction result. Always returns 200 — the outcome 
+            Transaction result. Always returns 200 — the outcome
             is determined by the status field in the response body.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/TransactionResponse"
-        "500":
-          description: Unexpected server error
+        "401":
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /api/mutators/invoke:
+    post:
+      operationId: invokeMutator
+      summary: Invoke a server-side mutator by name
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MutatorInvokeRequest"
+      responses:
+        "200":
+          description: >
+            Mutator result. Always returns 200 — the outcome
+            is determined by the status field in the response body.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionResponse"
+        "401":
+          description: Missing or invalid token
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
 
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Bearer JWT authenticating the writer to the backend.
+
   schemas:
+    MutatorInvokeRequest:
+      type: object
+      required:
+        - name
+        - args
+        - call_id
+      properties:
+        name:
+          type: string
+          description: Registered mutator name
+        args:
+          type: object
+          additionalProperties: true
+          description: Mutator arguments. Validated server-side via the mutator's own zod schema.
+        call_id:
+          type: string
+          description: Client-generated id for this invocation
+        transaction_id:
+          type: integer
+          format: int64
+          description: ps_crud transaction_id this invocation came from, for logging/idempotency.
+
     CrudTransaction:
       type: object
       required:

@@ -1,4 +1,3 @@
-import { usePowerSync } from '@powersync/react';
 import AddIcon from '@mui/icons-material/Add';
 import {
   Box,
@@ -13,33 +12,19 @@ import {
 } from '@mui/material';
 import Fab from '@mui/material/Fab';
 import React from 'react';
+import { v4 as uuid } from 'uuid';
 import { NavigationPage } from '@/components/navigation/NavigationPage';
 import { TodoListsWidget } from '@/components/widgets/TodoListsWidget';
-import { LISTS_TABLE } from '@/library/powersync/AppSchema';
-import { useConnector } from '@/components/providers/SystemProvider';
+import { useMutators } from '@/components/providers/SystemProvider';
 
 export default function TodoListsPage() {
-  const powerSync = usePowerSync();
-  const connector = useConnector();
+  const mutate = useMutators();
 
   const [showPrompt, setShowPrompt] = React.useState(false);
   const nameInputRef = React.createRef<HTMLInputElement>();
 
   const createNewList = async (name: string) => {
-    const userID = connector?.userId;
-    if (!userID) {
-      throw new Error(`Could not create new lists, no userID found`);
-    }
-
-    const res = await powerSync.execute(
-      `INSERT INTO ${LISTS_TABLE} (id, created_at, name, owner_id) VALUES (uuid(), datetime(), ?, ?) RETURNING *`,
-      [name, userID]
-    );
-
-    const resultRecord = res.rows?.item(0);
-    if (!resultRecord) {
-      throw new Error('Could not create list');
-    }
+    await mutate.listCreate({ id: uuid(), name });
   };
 
   return (

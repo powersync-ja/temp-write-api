@@ -1,6 +1,8 @@
 import { NavigationPanelContextProvider } from '@/components/navigation/NavigationPanelContext';
 import { AppSchema } from '@/library/powersync/AppSchema';
 import { DemoConnector } from '@/library/powersync/DemoConnector';
+import { clientMutators } from '@/library/mutators/mutators';
+import { createMutators, type Mutate } from '@/library/mutators/runtime';
 import { CircularProgress } from '@mui/material';
 import { PowerSyncContext } from '@powersync/react';
 import { PowerSyncDatabase } from '@powersync/web';
@@ -21,9 +23,19 @@ export const db = new PowerSyncDatabase({
 const ConnectorContext = React.createContext<DemoConnector | null>(null);
 export const useConnector = () => React.useContext(ConnectorContext);
 
+const MutatorsContext = React.createContext<Mutate<typeof clientMutators> | null>(null);
+export const useMutators = () => {
+  const ctx = React.useContext(MutatorsContext);
+  if (!ctx) throw new Error('useMutators must be used inside SystemProvider');
+  return ctx;
+};
+
 export const SystemProvider = ({ children }: { children: React.ReactNode }) => {
   const [connector] = React.useState(new DemoConnector());
   const [powerSync] = React.useState(db);
+  const [mutate] = React.useState(() =>
+    createMutators(db, clientMutators, () => ({ userId: connector.userId }))
+  );
 
   React.useEffect(() => {
     // Linting thinks this is a hook due to it's name
@@ -41,7 +53,9 @@ export const SystemProvider = ({ children }: { children: React.ReactNode }) => {
     <Suspense fallback={<CircularProgress />}>
       <PowerSyncContext.Provider value={powerSync}>
         <ConnectorContext.Provider value={connector}>
-          <NavigationPanelContextProvider>{children}</NavigationPanelContextProvider>
+          <MutatorsContext.Provider value={mutate}>
+            <NavigationPanelContextProvider>{children}</NavigationPanelContextProvider>
+          </MutatorsContext.Provider>
         </ConnectorContext.Provider>
       </PowerSyncContext.Provider>
     </Suspense>

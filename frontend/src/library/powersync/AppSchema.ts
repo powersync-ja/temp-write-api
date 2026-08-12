@@ -2,6 +2,7 @@ import { column, Schema, Table } from '@powersync/web';
 
 export const LISTS_TABLE = 'lists';
 export const TODOS_TABLE = 'todos';
+export const MUTATOR_CALLS_TABLE = 'mutator_calls';
 
 const todos = new Table(
   {
@@ -22,9 +23,19 @@ const lists = new Table({
   owner_id: column.text
 });
 
+const mutator_calls = new Table(
+  {
+    name: column.text,
+    args: column.text,
+    created_at: column.text
+  },
+  { insertOnly: true }
+);
+
 export const AppSchema = new Schema({
   todos,
-  lists
+  lists,
+  mutator_calls
 });
 
 export type Database = (typeof AppSchema)['types'];
