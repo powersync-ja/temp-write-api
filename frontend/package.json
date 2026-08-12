@@ -13,13 +13,16 @@
     "@emotion/react": "^11.11.4",
     "@emotion/styled": "^11.11.5",
     "@esbuild-plugins/node-globals-polyfill": "^0.2.3",
-    "@journeyapps/wa-sqlite": "latest",
+    "@journeyapps/wa-sqlite": "1.7.0",
     "@mui/icons-material": "^5.15.15",
     "@mui/material": "^5.15.12",
     "@mui/x-data-grid": "^6.19.6",
-    "@powersync/react": "latest",
-    "@powersync/web": "latest",
+    "@powersync/drizzle-driver": "0.7.4",
+    "@powersync/react": "1.10.0",
+    "@powersync/web": "1.37.2",
     "@supabase/supabase-js": "^2.39.7",
+    "@write-api/shared": "workspace:*",
+    "drizzle-orm": "0.45.2",
     "js-logger": "^1.6.1",
     "lodash": "^4.17.21",
     "openapi-fetch": "^0.17.0",
@@ -28,6 +31,11 @@
     "react-router-dom": "^6.22.3",
     "uuid": "^9.0.1",
     "zod": "^4.4.3"
+  },
+  "dependenciesMeta": {
+    "@write-api/shared": {
+      "injected": true
+    }
   },
   "devDependencies": {
     "@types/lodash": "^4.14.202",

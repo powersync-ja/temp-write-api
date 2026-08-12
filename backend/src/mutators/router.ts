@@ -1,12 +1,13 @@
 import express, { type Request, type Response } from 'express';
 import PG from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import { z } from 'zod';
 import { URL } from 'url';
 import config from '../../config.js';
 import { FatalOperationError, RetryableError } from '../errors.js';
 import type { OpBody, OpResponse } from '../types.js';
-import { serverMutators } from './mutators.js';
-import type { ServerMutator } from './types.js';
+import { sharedMutators, type Mutator } from '@write-api/shared/mutators';
+import * as pgSchema from '@write-api/shared/schema/todos.pg';
 
 const { Pool } = PG;
 
@@ -39,6 +40,47 @@ if (config.database.type !== 'postgres') {
     console.error('Pool connection failure to postgres (mutators):', err);
   });
 
+  const drizzleDb = drizzle(pool, { schema: pgSchema });
+
+  // Map an error to the response shape.
+  const sendPgError = (res: Response<OpResponse<'invokeMutator'>>, e: unknown): void => {
+    if (e instanceof FatalOperationError) {
+      res.status(200).send({
+        status: 'fatal_error',
+        message: e.message,
+        failed_operation: { error_code: e.errorCode, message: e.message }
+      });
+      return;
+    }
+    if (e instanceof RetryableError) {
+      res.status(200).send({ status: 'retryable_error', message: e.message });
+      return;
+    }
+    const err = e as Error & { code?: string };
+    const code = err.code ?? '';
+    if (code === '23505') {
+      res.status(200).send({
+        status: 'fatal_error',
+        message: err.message,
+        failed_operation: { error_code: 'UNIQUE_VIOLATION', message: err.message }
+      });
+    } else if (code === '23503') {
+      res.status(200).send({
+        status: 'fatal_error',
+        message: err.message,
+        failed_operation: { error_code: 'FOREIGN_KEY_VIOLATION', message: err.message }
+      });
+    } else if (code.startsWith('42')) {
+      res.status(200).send({
+        status: 'fatal_error',
+        message: err.message,
+        failed_operation: { error_code: 'SCHEMA_MISMATCH', message: err.message }
+      });
+    } else {
+      res.status(200).send({ status: 'retryable_error', message: err.message });
+    }
+  };
+
   router.post(
     '/invoke',
     async (
@@ -46,13 +88,14 @@ if (config.database.type !== 'postgres') {
       res: Response<OpResponse<'invokeMutator'>>
     ) => {
       const { name, args: rawArgs } = req.body;
-      const mutator = (serverMutators as Record<string, ServerMutator>)[name];
 
+      // Same shared definition the client runs, applied to Postgres via Drizzle.
+      const mutator = (sharedMutators as Record<string, Mutator>)[name];
       if (!mutator) {
         res.status(200).send({
           status: 'fatal_error',
           message: `Unknown mutator "${name}"`,
-          failed_operation: { error_code: 'UNKNOWN_MUTATOR', message: `No server-side handler registered for mutator "${name}".` }
+          failed_operation: { error_code: 'UNKNOWN_MUTATOR', message: `No handler registered for mutator "${name}".` }
         });
         return;
       }
@@ -74,51 +117,13 @@ if (config.database.type !== 'postgres') {
       // token's sub, never from the request body.
       const userId = req.auth!.sub;
 
-      const client = await pool.connect();
       try {
-        await client.query('BEGIN');
-        await mutator.run(parsedArgs, { userId, pg: client });
-        await client.query('COMMIT');
+        await drizzleDb.transaction(async (tx) => {
+          await mutator.run(parsedArgs, { tx, schema: pgSchema, userId });
+        });
         res.status(200).send({ status: 'success', message: `Mutator "${name}" applied` });
       } catch (e) {
-        await client.query('ROLLBACK');
-        if (e instanceof FatalOperationError) {
-          res.status(200).send({
-            status: 'fatal_error',
-            message: e.message,
-            failed_operation: { error_code: e.errorCode, message: e.message }
-          });
-          return;
-        }
-        if (e instanceof RetryableError) {
-          res.status(200).send({ status: 'retryable_error', message: e.message });
-          return;
-        }
-        const err = e as Error & { code?: string };
-        const code = err.code ?? '';
-        if (code === '23505') {
-          res.status(200).send({
-            status: 'fatal_error',
-            message: err.message,
-            failed_operation: { error_code: 'UNIQUE_VIOLATION', message: err.message }
-          });
-        } else if (code === '23503') {
-          res.status(200).send({
-            status: 'fatal_error',
-            message: err.message,
-            failed_operation: { error_code: 'FOREIGN_KEY_VIOLATION', message: err.message }
-          });
-        } else if (code.startsWith('42')) {
-          res.status(200).send({
-            status: 'fatal_error',
-            message: err.message,
-            failed_operation: { error_code: 'SCHEMA_MISMATCH', message: err.message }
-          });
-        } else {
-          res.status(200).send({ status: 'retryable_error', message: err.message });
-        }
-      } finally {
-        client.release();
+        sendPgError(res, e);
       }
     }
   );

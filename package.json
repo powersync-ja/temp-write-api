@@ -1,0 +1,7 @@
+{
+  "name": "write-api-root",
+  "private": true,
+  "type": "module",
+  "description": "",
+  "packageManager": "pnpm@9.12.3"
+}

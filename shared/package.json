@@ -1,0 +1,15 @@
+{
+  "name": "@write-api/shared",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "peerDependencies": {
+    "drizzle-orm": "0.45.2",
+    "zod": "^4.4.3"
+  },
+  "exports": {
+    "./mutators": "./mutators/index.ts",
+    "./schema/todos.sqlite": "./schema/todos.sqlite.ts",
+    "./schema/todos.pg": "./schema/todos.pg.ts"
+  }
+}

@@ -1,5 +1,5 @@
 import type { CrudEntry as SDKCrudEntry, CrudTransaction } from '@powersync/web';
-import type { MutatorEnvelope } from '../mutators/runtime';
+import type { MutatorEnvelope } from '../mutators/envelope';
 
 export interface CrudTransaction_API {
   crud: CrudEntry_API[];

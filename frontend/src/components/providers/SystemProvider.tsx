@@ -1,8 +1,8 @@
 import { NavigationPanelContextProvider } from '@/components/navigation/NavigationPanelContext';
 import { AppSchema } from '@/library/powersync/AppSchema';
 import { DemoConnector } from '@/library/powersync/DemoConnector';
-import { clientMutators } from '@/library/mutators/mutators';
-import { createMutators, type Mutate } from '@/library/mutators/runtime';
+import { createSharedMutators } from '@/library/mutators/sharedClient';
+import { sharedMutators } from '@write-api/shared/mutators';
 import { CircularProgress } from '@mui/material';
 import { PowerSyncContext } from '@powersync/react';
 import { PowerSyncDatabase } from '@powersync/web';
@@ -23,7 +23,7 @@ export const db = new PowerSyncDatabase({
 const ConnectorContext = React.createContext<DemoConnector | null>(null);
 export const useConnector = () => React.useContext(ConnectorContext);
 
-const MutatorsContext = React.createContext<Mutate<typeof clientMutators> | null>(null);
+const MutatorsContext = React.createContext<ReturnType<typeof createSharedMutators> | null>(null);
 export const useMutators = () => {
   const ctx = React.useContext(MutatorsContext);
   if (!ctx) throw new Error('useMutators must be used inside SystemProvider');
@@ -34,7 +34,7 @@ export const SystemProvider = ({ children }: { children: React.ReactNode }) => {
   const [connector] = React.useState(new DemoConnector());
   const [powerSync] = React.useState(db);
   const [mutate] = React.useState(() =>
-    createMutators(db, clientMutators, () => ({ userId: connector.userId }))
+    createSharedMutators(db, sharedMutators, () => ({ userId: connector.userId }))
   );
 
   React.useEffect(() => {
