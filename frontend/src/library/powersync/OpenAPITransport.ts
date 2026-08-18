@@ -15,6 +15,11 @@ export function createOpenAPIClient(baseUrl: string): OpenAPIClient {
         const { data, error } = await client.POST('/api/data', { body });
         if (error) throw new Error(`Failed to post transaction: ${error.message}`);
         return data;
+      },
+      async postTransactionBatch(body) {
+        const { data, error } = await client.POST('/api/data/batch', { body });
+        if (error) throw new Error(`Failed to post transaction batch: ${error.message}`);
+        return data;
       }
     }
   };
