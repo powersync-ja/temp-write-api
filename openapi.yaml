@@ -22,7 +22,7 @@ paths:
       responses:
         "200":
           description: >
-            Transaction result. Always returns 200 — the outcome 
+            Transaction result. Always returns 200 — the outcome
             is determined by the status field in the response body.
           content:
             application/json:
@@ -76,7 +76,200 @@ paths:
               schema:
                 $ref: "#/components/schemas/MessageResponse"
 
+  /api/data/transactions/{transactionId}/operations:
+    post:
+      operationId: postTransactionOperations
+      summary: Stage operations as part of a large transaction
+      description: >
+        For transactions too large for a single postCrudTransaction call.
+        Saves the given operations to the transactionId staging area without processing.
+        beginTransaction must have been called first.
+        Can be called repeatedly with the same transactionId to accumulate more operations before committing.
+        Staged operations that are never committed are discarded after a server-defined TTL.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TransactionId"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: "#/components/schemas/CrudEntry"
+      responses:
+        "202":
+          description: Operations accepted into the staging area for the specified transaction.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StagedOperationsResponse"
+        "401":
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: >
+            Unknown transaction. Either beginTransaction was never called for this id, or it has been garbage collected.
+            The client must not assume its earlier operations calls for this id were preserved and should restart with beginTransaction under a fresh id.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "409":
+          description: Transaction has already been committed; staging is closed.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /api/data/transactions/{transactionId}/commit:
+    post:
+      operationId: commitTransaction
+      summary: Commit a staged transaction
+      description: >
+        Idempotent, calling commit again on an already-committed transaction returns its current status without reprocessing.
+        Committing runs the staged operations as a background batch, so this always returns immediately with a pending/processing status.
+        Poll getTransactionStatus for the outcome.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TransactionId"
+      responses:
+        "202":
+          description: Commit accepted. Processing started.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionResponse"
+        "401":
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Unknown transaction, either nothing was begun/staged or this transaction has been garbage collected.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+  /api/data/transactions/{transactionId}:
+    put:
+      operationId: beginTransaction
+      summary: Begin staging a large transaction
+      description: >
+        Creates the staging area for transactionId, identified by the client-generated UUID in the path.
+        Operations can only be staged against a transaction that has been explicitly begun, so this must be called before postTransactionOperations can be invoked against a transactionId.
+        Idempotent while the transaction is still staging, meaning it is safe to retry after a dropped connection and will not create a second transaction or duplicate staged operations.
+        Returns the current staged_count, so a reconnecting client can tell where it left off, or if a transaction has already been committed, or has been garbage collected.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TransactionId"
+      responses:
+        "201":
+          description: Transaction begun.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StagedOperationsResponse"
+        "200":
+          description: Transaction was already staging; returned its current state without changing anything.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StagedOperationsResponse"
+        "401":
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "409":
+          description: Transaction has already been committed, so it can no longer be begun again.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
+    get:
+      operationId: getTransactionStatus
+      summary: Query the status/result of a committed transaction
+      description: >
+        Results are retained for a server-defined TTL after commit completes, then garbage collected.
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: "#/components/parameters/TransactionId"
+      responses:
+        "200":
+          description: Current transaction status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/TransactionResponse"
+        "401":
+          description: Missing or invalid token
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "404":
+          description: Unknown transaction, either nothing was begun/staged or this transaction has been garbage collected.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+        "500":
+          description: Unexpected server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MessageResponse"
+
 components:
+  parameters:
+    TransactionId:
+      name: transactionId
+      in: path
+      required: true
+      description: Client-generated UUID identifying a staged/committed transaction.
+        This must be unique for each transaction.
+        DO NOT reuse CrudTransaction.transaction_id values across transactions.
+      schema:
+        type: string
+        format: uuid
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: Bearer JWT authenticating the writer to the backend.
+
   schemas:
     CrudTransaction:
       type: object
@@ -177,8 +370,13 @@ components:
       properties:
         status:
           type: string
-          enum: [success, retryable_error, fatal_error, not_attempted]
+          enum: [pending, processing, success, retryable_error, fatal_error, not_attempted]
           description: >
+            pending: transaction committed, batch job not yet started.
+              Only returned by the staged-transaction commit/status
+              endpoints, never by postCrudTransaction.
+            processing: batch job running. Only returned by the
+              staged-transaction commit/status endpoints.
             success: entire transaction persisted, safe to complete.
             retryable_error: transient failure, transaction rolled back,
               client should retry.
@@ -218,6 +416,17 @@ components:
         message:
           type: string
           description: Human-readable error detail.
+
+    StagedOperationsResponse:
+      type: object
+      required: [transaction_id, staged_count]
+      properties:
+        transaction_id:
+          type: string
+          format: uuid
+        staged_count:
+          type: integer
+          description: Total number of operations staged for this transaction so far, across all operations calls.
 
     MessageResponse:
       type: object
