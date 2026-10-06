@@ -1,4 +1,4 @@
-# PowerSync Write API
+# PowerSync Reference Write Implementation
 
 A self-hostable backend for the PowerSync write path: a client uploads its queued local changes to
 an HTTP API, which persists them to your source database. PowerSync replicates that database back
