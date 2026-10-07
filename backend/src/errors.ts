@@ -1,6 +1,6 @@
 /**
- * The backend is misconfigured and cannot start. Carries a message written for whoever is running
- * it, naming the fix rather than only the fault.
+ * The backend cannot start because of invalid configuration.
+ * The message should explain how to fix it.
  */
 export class ConfigurationError extends Error {
   constructor(message: string) {
@@ -15,11 +15,28 @@ export class RetryableError extends Error {
   }
 }
 
-/** Non-recoverable failure (constraint violation, schema mismatch). Client should NOT retry. */
+export type ErrorCode =
+  | 'NOT_NULL_VIOLATION'
+  | 'UNIQUE_VIOLATION'
+  | 'FOREIGN_KEY_VIOLATION'
+  | 'CHECK_VIOLATION'
+  | 'CONSTRAINT_VIOLATION'
+  | 'INVALID_DATA'
+  | 'SCHEMA_MISMATCH'
+  | 'DOCUMENT_VALIDATION_FAILURE'
+  | 'UNAUTHORIZED'
+  | 'UNCLASSIFIED_ERROR'
+  | (string & {});
+
+export type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
+
+/** Permanent rejection; the shared handler decides who must handle it. */
 export class FatalOperationError extends Error {
   constructor(
-    public readonly errorCode: string,
-    message: string
+    public readonly errorCode: ErrorCode,
+    message: string,
+    public readonly details?: JsonValue,
+    public operationIndex?: number
   ) {
     super(message);
   }
